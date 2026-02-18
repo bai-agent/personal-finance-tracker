@@ -68,13 +68,6 @@ class UIManager {
   switchTab(tabName) {
     if (!tabName || this.isLoading) return;
 
-    // Update active tab button
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-      tab.classList.remove('active');
-    });
-    const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
-    if (activeTab) activeTab.classList.add('active');
-    
     // Sync dropdown selector
     const dropdown = document.getElementById('navDropdown');
     if (dropdown) dropdown.value = tabName;
