@@ -1,0 +1,296 @@
+/* Mobile-Specific Enhancements */
+
+/* PWA and Mobile App Features */
+@media (display-mode: standalone) {
+  .header {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .footer {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Mobile-specific touch improvements */
+@media (max-width: 767px) {
+  /* Larger touch targets */
+  .nav-tab {
+    min-height: 48px;
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+  
+  .btn {
+    min-height: 48px;
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+  
+  .refresh-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improved mobile navigation */
+  .nav-tabs {
+    position: sticky;
+    top: 73px; /* Height of header + 1px */
+    z-index: 50;
+    background: var(--bg-card);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  /* Mobile-optimized cards */
+  .card-header {
+    padding: var(--spacing-md);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .card-body {
+    padding: var(--spacing-md);
+  }
+  
+  /* Mobile overview grid */
+  .overview-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+  
+  /* Simplified big numbers for mobile */
+  .big-number {
+    font-size: var(--font-size-2xl);
+    line-height: 1.2;
+  }
+  
+  /* Mobile-friendly transactions */
+  .transaction-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .transaction-info {
+    width: 100%;
+  }
+  
+  .transaction-amount {
+    align-self: flex-end;
+  }
+  
+  /* Mobile bills layout */
+  .bill-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .bill-info {
+    width: 100%;
+  }
+  
+  .bill-amount {
+    align-self: flex-end;
+  }
+  
+  /* Mobile goals layout */
+  .goal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .goal-progress {
+    text-align: left;
+    width: 100%;
+  }
+  
+  /* Mobile health score */
+  .health-score-display {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--spacing-lg);
+  }
+  
+  .score-circle {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .score-circle::after {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .score-number {
+    font-size: var(--font-size-xl);
+  }
+  
+  .score-label {
+    font-size: var(--font-size-base);
+  }
+  
+  /* Mobile charts */
+  .chart-controls {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+  
+  .chart-btn {
+    flex: 1;
+    min-width: 60px;
+  }
+  
+  .period-select {
+    width: 100%;
+    margin-top: var(--spacing-sm);
+  }
+  
+  /* Mobile calendar */
+  .calendar-day {
+    font-size: 10px;
+    min-height: 40px;
+  }
+  
+  .calendar-day-number {
+    font-size: 12px;
+  }
+  
+  /* Mobile transfers */
+  .transfer-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .transfer-amount {
+    align-self: flex-end;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 375px) {
+  .header-content {
+    padding: var(--spacing-sm);
+  }
+  
+  .main-content {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+  
+  .logo {
+    font-size: var(--font-size-lg);
+  }
+  
+  .last-update {
+    font-size: var(--font-size-xs);
+  }
+  
+  .nav-tab {
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+  }
+  
+  .big-number {
+    font-size: var(--font-size-xl);
+  }
+  
+  .card-header h3 {
+    font-size: var(--font-size-base);
+  }
+  
+  .chart-canvas {
+    max-height: 200px;
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-width: 767px) and (orientation: landscape) {
+  .overview-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .accounts-grid,
+  .goals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .bills-overview {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .nav-tabs {
+    top: 65px; /* Adjusted for landscape */
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .loading-spinner {
+    border-width: 3px;
+  }
+}
+
+/* Accessibility improvements for mobile */
+@media (max-width: 767px) {
+  /* Larger focus indicators */
+  .nav-tab:focus,
+  .btn:focus,
+  .chart-btn:focus {
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+  }
+  
+  /* Better contrast for small text */
+  .transaction-meta,
+  .bill-due-date,
+  .goal-timeline,
+  .change {
+    font-weight: 500;
+  }
+  
+  /* Improved touch feedback */
+  .btn:active,
+  .nav-tab:active,
+  .chart-btn:active {
+    transform: scale(0.98);
+  }
+  
+  /* Better spacing for readability */
+  .insight-description,
+  .factor-name {
+    line-height: 1.6;
+  }
+}
+
+/* Dark mode adjustments for mobile */
+@media (prefers-color-scheme: dark) and (max-width: 767px) {
+  .bill-item.overdue {
+    background: #7f1d1d;
+  }
+  
+  .bill-item.due-soon {
+    background: #78350f;
+  }
+  
+  .calendar-day.has-bill {
+    background: #78350f;
+  }
+}
+
+/* Reduce animations on low-power devices */
+@media (prefers-reduced-motion: reduce) {
+  .tab-content {
+    animation: none;
+  }
+  
+  .btn:active,
+  .nav-tab:active,
+  .chart-btn:active {
+    transform: none;
+  }
+  
+  .progress-fill {
+    transition: none;
+  }
+}

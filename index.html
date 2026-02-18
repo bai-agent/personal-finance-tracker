@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bailey & Katie - Finance Tracker</title>
+    <meta name="description" content="Personal financial tracking dashboard for Bailey and Katie">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Finance Tracker">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/charts.css">
+    <link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">💰 B&K Finances</h1>
+                <div class="last-update">
+                    <span id="lastUpdate">Last updated: Loading...</span>
+                    <button id="refreshBtn" class="refresh-btn" title="Refresh Data">🔄</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="overview">📊 Overview</button>
+            <button class="nav-tab" data-tab="accounts">🏦 Accounts</button>
+            <button class="nav-tab" data-tab="bills">📋 Bills</button>
+            <button class="nav-tab" data-tab="goals">🎯 Goals</button>
+            <button class="nav-tab" data-tab="insights">💡 Insights</button>
+        </nav>
+
+        <!-- Loading Screen -->
+        <div id="loading" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>Loading financial data...</p>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Tab -->
+            <div id="overview" class="tab-content active">
+                <div class="overview-grid">
+                    <!-- Net Worth Card -->
+                    <div class="card net-worth-card">
+                        <div class="card-header">
+                            <h3>Net Worth</h3>
+                            <span class="trend-indicator" id="netWorthTrend">📈</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="big-number" id="netWorth">$0.00</div>
+                            <div class="change" id="netWorthChange">+$0.00 this month</div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Income Card -->
+                    <div class="card income-card">
+                        <div class="card-header">
+                            <h3>Monthly Income</h3>
+                            <span class="trend-indicator" id="incomeTrend">💵</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="big-number" id="monthlyIncome">$0.00</div>
+                            <div class="change" id="incomeChange">Last 30 days</div>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Expenses Card -->
+                    <div class="card expenses-card">
+                        <div class="card-header">
+                            <h3>Monthly Expenses</h3>
+                            <span class="trend-indicator" id="expensesTrend">💸</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="big-number" id="monthlyExpenses">$0.00</div>
+                            <div class="change" id="expensesChange">Last 30 days</div>
+                        </div>
+                    </div>
+
+                    <!-- Savings Rate Card -->
+                    <div class="card savings-card">
+                        <div class="card-header">
+                            <h3>Savings Rate</h3>
+                            <span class="trend-indicator" id="savingsTrend">💎</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="big-number" id="savingsRate">0%</div>
+                            <div class="change" id="savingsAmount">$0.00 saved</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cash Flow Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Cash Flow Trend</h3>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-period="30">30D</button>
+                            <button class="chart-btn" data-period="90">90D</button>
+                            <button class="chart-btn" data-period="365">1Y</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="cashFlowChart" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Spending Categories -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Spending Breakdown</h3>
+                        <select id="categoryPeriod" class="period-select">
+                            <option value="thisMonth">This Month</option>
+                            <option value="lastMonth">Last Month</option>
+                            <option value="last3Months">Last 3 Months</option>
+                        </select>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="categoryChart" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accounts Tab -->
+            <div id="accounts" class="tab-content">
+                <div class="accounts-grid" id="accountsGrid">
+                    <!-- Dynamic account cards will be inserted here -->
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Transactions</h3>
+                        <button class="secondary-btn" id="viewAllTransactions">View All</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="transactions-list" id="recentTransactions">
+                            <!-- Dynamic transactions will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bills Tab -->
+            <div id="bills" class="tab-content">
+                <div class="bills-overview">
+                    <div class="card upcoming-bills">
+                        <div class="card-header">
+                            <h3>Upcoming Bills (Next 30 Days)</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="bills-list" id="upcomingBills">
+                                <!-- Dynamic bills will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bill-calendar">
+                        <div class="card-header">
+                            <h3>Bill Calendar</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="calendar-view" id="billCalendar">
+                                <!-- Calendar will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Money Transfers Needed -->
+                <div class="card transfers-card">
+                    <div class="card-header">
+                        <h3>💸 Transfers Needed</h3>
+                        <span class="urgency-badge" id="transferUrgency">Normal</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="transfers-list" id="transfersList">
+                            <!-- Dynamic transfers will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Goals Tab -->
+            <div id="goals" class="tab-content">
+                <div class="goals-grid" id="goalsGrid">
+                    <!-- Dynamic goal cards will be inserted here -->
+                </div>
+
+                <!-- Goals Progress Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Goals Progress Over Time</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="goalsChart" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Insights Tab -->
+            <div id="insights" class="tab-content">
+                <div class="insights-cards">
+                    <!-- BAI Recommendations -->
+                    <div class="card bai-insights">
+                        <div class="card-header">
+                            <h3>🤖 BAI Recommendations</h3>
+                            <div class="insights-timestamp" id="insightsTimestamp">Updated: Never</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="insights-list" id="baiInsights">
+                                <p class="no-data">No insights yet. Upload some bank statements to get started!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spending Patterns -->
+                    <div class="card patterns-card">
+                        <div class="card-header">
+                            <h3>📈 Spending Patterns</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="patterns-list" id="spendingPatterns">
+                                <!-- Dynamic patterns will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Health Score -->
+                    <div class="card health-score-card">
+                        <div class="card-header">
+                            <h3>🏥 Financial Health Score</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="health-score-display">
+                                <div class="score-circle" id="healthScoreCircle">
+                                    <span class="score-number" id="healthScore">--</span>
+                                    <span class="score-label">/100</span>
+                                </div>
+                                <div class="score-breakdown" id="scoreBreakdown">
+                                    <!-- Score factors will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Projections -->
+                    <div class="card projections-card">
+                        <div class="card-header">
+                            <h3>🔮 Financial Projections</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="projectionsChart" class="chart-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; 2024 Bailey & Katie Finance Tracker</p>
+                <p>Powered by BAI 🤖 | Last sync: <span id="footerLastSync">Never</span></p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+
+    <!-- Service Worker for PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js');
+        }
+    </script>
+</body>
+</html>
