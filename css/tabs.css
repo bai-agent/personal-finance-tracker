@@ -1,0 +1,425 @@
+/* Extended Tab Styles for New Sections */
+
+/* Section Titles */
+.section-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: var(--spacing-xl) 0 var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--border-light);
+}
+
+.sub-heading {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: var(--spacing-lg) 0 var(--spacing-md);
+}
+
+/* User Breakdown Cards */
+.user-breakdown {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.user-card.bailey { border-left: 4px solid #3b82f6; }
+.user-card.katie { border-left: 4px solid #ec4899; }
+.user-card.joint { border-left: 4px solid #10b981; }
+
+.user-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-light);
+  font-size: var(--font-size-sm);
+}
+
+.user-stat:last-child { border-bottom: none; }
+
+.user-stat.net {
+  font-weight: 700;
+  font-size: var(--font-size-base);
+  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+  border-top: 2px solid var(--border-light);
+}
+
+/* Account Card Types */
+.account-card.checking { border-left: 4px solid #22c55e; }
+.account-card.spending { border-left: 4px solid #f59e0b; }
+.account-card.bills { border-left: 4px solid #ef4444; }
+.account-card.savings-acct { border-left: 4px solid #3b82f6; }
+.account-card.food { border-left: 4px solid #f97316; }
+.account-card.credit { border-left: 4px solid #dc2626; }
+
+/* Filter Select */
+.filter-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-width: 180px;
+}
+
+/* Data Tables */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.data-table thead {
+  background: var(--bg-secondary);
+  position: sticky;
+  top: 0;
+}
+
+.data-table th {
+  padding: var(--spacing-md);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-medium);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg-secondary);
+}
+
+.data-table .no-data {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: var(--spacing-xl);
+}
+
+.wage-table-container,
+.bill-table-container,
+.history-table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Wage Summary Stats */
+.wage-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.wage-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.wage-stat span:first-child {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.big-number-sm {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.highlight {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.wages-overview {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-lg);
+}
+
+.bailey-wages { border-left: 4px solid #3b82f6; }
+.katie-wages { border-left: 4px solid #ec4899; }
+
+/* Action Cards */
+.action-card {
+  border-left: 4px solid var(--warning);
+}
+
+.action-description {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.6;
+}
+
+/* Badge */
+.badge {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-2xl);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+}
+
+/* Bill Status Badges */
+.status-paid { color: #166534; background: #dcfce7; }
+.status-due-soon { color: #92400e; background: #fef3c7; }
+.status-overdue { color: #991b1b; background: #fecaca; }
+.status-upcoming { color: #1e40af; background: #dbeafe; }
+
+/* Savings Header */
+.savings-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.savings-total-card .big-number { color: var(--secondary); }
+
+/* Projection Grid */
+.projection-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+.projection-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.projection-item .label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.projection-item .value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+}
+
+.projection-item.income .value { color: var(--success); }
+.projection-item.bills .value { color: var(--danger); }
+.projection-item.spending .value { color: var(--warning); }
+.projection-item.surplus .value { color: var(--primary); }
+
+/* Money Movement Steps */
+.movement-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.movement-step {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary);
+}
+
+.step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.step-detail {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.step-amount {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: var(--font-size-lg);
+}
+
+/* Scenarios */
+.scenarios-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.scenario-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.scenario-label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.scenario-value {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* Averages Grid */
+.averages-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+.average-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  text-align: center;
+}
+
+.average-item .label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.average-item .value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* History Table */
+.history-table th:last-child,
+.history-table td:last-child {
+  text-align: center;
+}
+
+.history-table .type-actual {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.history-table .type-projected {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Action List */
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.action-item {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--secondary);
+}
+
+.action-icon {
+  font-size: var(--font-size-xl);
+  flex-shrink: 0;
+}
+
+.action-text {
+  flex: 1;
+}
+
+.action-title {
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.action-detail {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (min-width: 576px) {
+  .user-breakdown { grid-template-columns: repeat(3, 1fr); }
+  .wages-overview { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 768px) {
+  .wage-summary { grid-template-columns: repeat(4, 1fr); }
+  .projection-grid { grid-template-columns: repeat(4, 1fr); }
+  .averages-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (max-width: 575px) {
+  .user-breakdown { grid-template-columns: 1fr; }
+  .savings-header { grid-template-columns: 1fr; }
+  .projection-grid { grid-template-columns: 1fr; }
+  .averages-grid { grid-template-columns: 1fr 1fr; }
+  .wage-summary { grid-template-columns: 1fr 1fr; }
+  
+  .data-table { font-size: var(--font-size-xs); }
+  .data-table th, .data-table td { padding: var(--spacing-sm); }
+  
+  .filter-select { width: 100%; margin-top: var(--spacing-sm); }
+  
+  .scenario-item { flex-direction: column; gap: var(--spacing-xs); text-align: center; }
+  
+  .movement-step { flex-direction: column; }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .status-paid { color: #86efac; background: #14532d; }
+  .status-due-soon { color: #fcd34d; background: #78350f; }
+  .status-overdue { color: #fca5a5; background: #7f1d1d; }
+  .status-upcoming { color: #93c5fd; background: #1e3a5f; }
+}

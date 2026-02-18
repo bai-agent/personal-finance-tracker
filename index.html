@@ -7,12 +7,13 @@
     <meta name="description" content="Personal financial tracking dashboard for Bailey and Katie">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Finance Tracker">
+    <meta name="apple-mobile-web-app-title" content="B&K Finance">
     <link rel="apple-touch-icon" href="assets/icon-192.png">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/charts.css">
     <link rel="stylesheet" href="css/mobile.css">
+    <link rel="stylesheet" href="css/tabs.css">
 </head>
 <body>
     <div id="app">
@@ -31,8 +32,11 @@
         <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="overview">📊 Overview</button>
             <button class="nav-tab" data-tab="accounts">🏦 Accounts</button>
+            <button class="nav-tab" data-tab="wages">💵 Wages</button>
             <button class="nav-tab" data-tab="bills">📋 Bills</button>
-            <button class="nav-tab" data-tab="goals">🎯 Goals</button>
+            <button class="nav-tab" data-tab="savings">💎 Savings</button>
+            <button class="nav-tab" data-tab="projections">🔮 Projections</button>
+            <button class="nav-tab" data-tab="history">📈 History</button>
             <button class="nav-tab" data-tab="insights">💡 Insights</button>
         </nav>
 
@@ -44,54 +48,65 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Overview Tab -->
+
+            <!-- ==================== OVERVIEW TAB ==================== -->
             <div id="overview" class="tab-content active">
                 <div class="overview-grid">
-                    <!-- Net Worth Card -->
                     <div class="card net-worth-card">
-                        <div class="card-header">
-                            <h3>Net Worth</h3>
-                            <span class="trend-indicator" id="netWorthTrend">📈</span>
-                        </div>
+                        <div class="card-header"><h3>Net Worth</h3><span class="trend-indicator" id="netWorthTrend">📈</span></div>
                         <div class="card-body">
                             <div class="big-number" id="netWorth">$0.00</div>
                             <div class="change" id="netWorthChange">+$0.00 this month</div>
                         </div>
                     </div>
-
-                    <!-- Monthly Income Card -->
                     <div class="card income-card">
-                        <div class="card-header">
-                            <h3>Monthly Income</h3>
-                            <span class="trend-indicator" id="incomeTrend">💵</span>
-                        </div>
+                        <div class="card-header"><h3>Monthly Income</h3><span>💵</span></div>
                         <div class="card-body">
                             <div class="big-number" id="monthlyIncome">$0.00</div>
-                            <div class="change" id="incomeChange">Last 30 days</div>
+                            <div class="change" id="incomeChange">Combined wages</div>
                         </div>
                     </div>
-
-                    <!-- Monthly Expenses Card -->
                     <div class="card expenses-card">
-                        <div class="card-header">
-                            <h3>Monthly Expenses</h3>
-                            <span class="trend-indicator" id="expensesTrend">💸</span>
-                        </div>
+                        <div class="card-header"><h3>Monthly Expenses</h3><span>💸</span></div>
                         <div class="card-body">
                             <div class="big-number" id="monthlyExpenses">$0.00</div>
-                            <div class="change" id="expensesChange">Last 30 days</div>
+                            <div class="change" id="expensesChange">All accounts</div>
                         </div>
                     </div>
-
-                    <!-- Savings Rate Card -->
                     <div class="card savings-card">
-                        <div class="card-header">
-                            <h3>Savings Rate</h3>
-                            <span class="trend-indicator" id="savingsTrend">💎</span>
-                        </div>
+                        <div class="card-header"><h3>Savings Rate</h3><span>💎</span></div>
                         <div class="card-body">
                             <div class="big-number" id="savingsRate">0%</div>
                             <div class="change" id="savingsAmount">$0.00 saved</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Breakdown -->
+                <div class="user-breakdown">
+                    <div class="card user-card bailey">
+                        <div class="card-header"><h3>👤 Bailey</h3></div>
+                        <div class="card-body">
+                            <div class="user-stat"><span>Wages (CBA)</span><span id="baileyWages">$0.00</span></div>
+                            <div class="user-stat"><span>Spending (Starling)</span><span id="baileySpending">$0.00</span></div>
+                            <div class="user-stat net"><span>Net</span><span id="baileyNet">$0.00</span></div>
+                        </div>
+                    </div>
+                    <div class="card user-card katie">
+                        <div class="card-header"><h3>👤 Katie</h3></div>
+                        <div class="card-body">
+                            <div class="user-stat"><span>Wages (CBA)</span><span id="katieWages">$0.00</span></div>
+                            <div class="user-stat"><span>Spending (Starling)</span><span id="katieSpending">$0.00</span></div>
+                            <div class="user-stat net"><span>Net</span><span id="katieNet">$0.00</span></div>
+                        </div>
+                    </div>
+                    <div class="card user-card joint">
+                        <div class="card-header"><h3>🤝 Joint</h3></div>
+                        <div class="card-body">
+                            <div class="user-stat"><span>Bills (CBA)</span><span id="jointBills">$0.00</span></div>
+                            <div class="user-stat"><span>Food (Starling)</span><span id="jointFood">$0.00</span></div>
+                            <div class="user-stat"><span>Savings (CBA)</span><span id="jointSavings">$0.00</span></div>
+                            <div class="user-stat"><span>Credit (Capital One)</span><span id="jointCredit">$0.00</span></div>
                         </div>
                     </div>
                 </div>
@@ -106,105 +121,422 @@
                             <button class="chart-btn" data-period="365">1Y</button>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <canvas id="cashFlowChart" class="chart-canvas"></canvas>
-                    </div>
-                </div>
-
-                <!-- Spending Categories -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Spending Breakdown</h3>
-                        <select id="categoryPeriod" class="period-select">
-                            <option value="thisMonth">This Month</option>
-                            <option value="lastMonth">Last Month</option>
-                            <option value="last3Months">Last 3 Months</option>
-                        </select>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="categoryChart" class="chart-canvas"></canvas>
-                    </div>
+                    <div class="card-body"><canvas id="cashFlowChart" class="chart-canvas"></canvas></div>
                 </div>
             </div>
 
-            <!-- Accounts Tab -->
+            <!-- ==================== ACCOUNTS TAB ==================== -->
             <div id="accounts" class="tab-content">
-                <div class="accounts-grid" id="accountsGrid">
-                    <!-- Dynamic account cards will be inserted here -->
+                <!-- Bailey's Accounts -->
+                <h2 class="section-title">👤 Bailey's Accounts</h2>
+                <div class="accounts-grid" id="baileyAccountsGrid">
+                    <div class="card account-card checking">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">BW Personal (Commonwealth)</div><div class="account-type">Wages</div></div><span>🏛️</span></div>
+                            <div class="account-balance positive" id="bwCbaBalance">$0.00</div>
+                        </div>
+                    </div>
+                    <div class="card account-card spending">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">BW Personal (Starling)</div><div class="account-type">Spending</div></div><span>⭐</span></div>
+                            <div class="account-balance" id="bwStarlingBalance">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Katie's Accounts -->
+                <h2 class="section-title">👤 Katie's Accounts</h2>
+                <div class="accounts-grid" id="katieAccountsGrid">
+                    <div class="card account-card checking">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">Katie Personal (Commonwealth)</div><div class="account-type">Wages</div></div><span>🏛️</span></div>
+                            <div class="account-balance positive" id="katieCbaBalance">$0.00</div>
+                        </div>
+                    </div>
+                    <div class="card account-card spending">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">Katie Personal (Starling)</div><div class="account-type">Spending</div></div><span>⭐</span></div>
+                            <div class="account-balance" id="katieStarlingBalance">$0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Joint Accounts -->
+                <h2 class="section-title">🤝 Joint Accounts</h2>
+                <div class="accounts-grid" id="jointAccountsGrid">
+                    <div class="card account-card bills">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">Joint (Commonwealth)</div><div class="account-type">Recurring Bills</div></div><span>🏛️</span></div>
+                            <div class="account-balance" id="jointCbaBalance">$0.00</div>
+                        </div>
+                    </div>
+                    <div class="card account-card savings-acct">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">Joint Saver (Commonwealth)</div><div class="account-type">Savings</div></div><span>🏛️</span></div>
+                            <div class="account-balance positive" id="jointSaverBalance">$0.00</div>
+                        </div>
+                    </div>
+                    <div class="card account-card food">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">Joint (Starling)</div><div class="account-type">Food & Spending</div></div><span>⭐</span></div>
+                            <div class="account-balance" id="jointStarlingBalance">$0.00</div>
+                        </div>
+                    </div>
+                    <div class="card account-card credit">
+                        <div class="card-body">
+                            <div class="account-header"><div><div class="account-name">Credit Card (Capital One)</div><div class="account-type">Credit</div></div><span>💳</span></div>
+                            <div class="account-balance negative" id="creditBalance">$0.00</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Recent Transactions -->
                 <div class="card">
                     <div class="card-header">
                         <h3>Recent Transactions</h3>
-                        <button class="secondary-btn" id="viewAllTransactions">View All</button>
+                        <select id="accountFilter" class="filter-select">
+                            <option value="all">All Accounts</option>
+                            <optgroup label="Bailey">
+                                <option value="bw_cba">BW Personal (CBA)</option>
+                                <option value="bw_starling">BW Personal (Starling)</option>
+                            </optgroup>
+                            <optgroup label="Katie">
+                                <option value="katie_cba">Katie Personal (CBA)</option>
+                                <option value="katie_starling">Katie Personal (Starling)</option>
+                            </optgroup>
+                            <optgroup label="Joint">
+                                <option value="joint_cba">Joint (CBA)</option>
+                                <option value="joint_saver">Joint Saver (CBA)</option>
+                                <option value="joint_starling">Joint (Starling)</option>
+                                <option value="credit">Credit Card</option>
+                            </optgroup>
+                        </select>
                     </div>
                     <div class="card-body">
-                        <div class="transactions-list" id="recentTransactions">
-                            <!-- Dynamic transactions will be inserted here -->
-                        </div>
+                        <div class="transactions-list" id="recentTransactions"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Bills Tab -->
+            <!-- ==================== WAGES TAB ==================== -->
+            <div id="wages" class="tab-content">
+                <div class="wages-overview">
+                    <!-- Bailey's Wages -->
+                    <div class="card user-wages bailey-wages">
+                        <div class="card-header"><h3>👤 Bailey's Wages</h3></div>
+                        <div class="card-body">
+                            <div class="wage-summary">
+                                <div class="wage-stat"><span>Average Fortnightly</span><span class="big-number-sm" id="baileyAvgWage">$0.00</span></div>
+                                <div class="wage-stat"><span>Usual Pay Day</span><span class="highlight" id="baileyPayDay">-</span></div>
+                                <div class="wage-stat"><span>Next Expected Pay</span><span class="highlight" id="baileyNextPay">-</span></div>
+                                <div class="wage-stat"><span>Expected Amount</span><span class="big-number-sm" id="baileyNextAmount">$0.00</span></div>
+                            </div>
+                            <h4 class="sub-heading">Wage History</h4>
+                            <div class="wage-table-container">
+                                <table class="data-table" id="baileyWageHistory">
+                                    <thead>
+                                        <tr><th>Date</th><th>Day</th><th>Amount</th><th>Variance</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="4" class="no-data">Upload pay statements to populate</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Katie's Wages -->
+                    <div class="card user-wages katie-wages">
+                        <div class="card-header"><h3>👤 Katie's Wages</h3></div>
+                        <div class="card-body">
+                            <div class="wage-summary">
+                                <div class="wage-stat"><span>Average Fortnightly</span><span class="big-number-sm" id="katieAvgWage">$0.00</span></div>
+                                <div class="wage-stat"><span>Usual Pay Day</span><span class="highlight" id="katiePayDay">-</span></div>
+                                <div class="wage-stat"><span>Next Expected Pay</span><span class="highlight" id="katieNextPay">-</span></div>
+                                <div class="wage-stat"><span>Expected Amount</span><span class="big-number-sm" id="katieNextAmount">$0.00</span></div>
+                            </div>
+                            <h4 class="sub-heading">Wage History</h4>
+                            <div class="wage-table-container">
+                                <table class="data-table" id="katieWageHistory">
+                                    <thead>
+                                        <tr><th>Date</th><th>Day</th><th>Amount</th><th>Variance</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="4" class="no-data">Upload pay statements to populate</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Combined Income Chart -->
+                <div class="card">
+                    <div class="card-header"><h3>Combined Income Trend</h3></div>
+                    <div class="card-body"><canvas id="wagesChart" class="chart-canvas"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ==================== BILLS TAB ==================== -->
             <div id="bills" class="tab-content">
-                <div class="bills-overview">
-                    <div class="card upcoming-bills">
-                        <div class="card-header">
-                            <h3>Upcoming Bills (Next 30 Days)</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="bills-list" id="upcomingBills">
-                                <!-- Dynamic bills will be inserted here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card bill-calendar">
-                        <div class="card-header">
-                            <h3>Bill Calendar</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="calendar-view" id="billCalendar">
-                                <!-- Calendar will be inserted here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Money Transfers Needed -->
-                <div class="card transfers-card">
+                <!-- Money Movement Required -->
+                <div class="card action-card">
                     <div class="card-header">
-                        <h3>💸 Transfers Needed</h3>
-                        <span class="urgency-badge" id="transferUrgency">Normal</span>
+                        <h3>💸 Money Transfers Needed</h3>
+                        <span class="urgency-badge" id="transferUrgency">Check Required</span>
                     </div>
                     <div class="card-body">
+                        <p class="action-description">Based on upcoming bills and current account balances, here's what needs to move:</p>
                         <div class="transfers-list" id="transfersList">
-                            <!-- Dynamic transfers will be inserted here -->
+                            <div class="transfer-item">
+                                <div class="transfer-info">
+                                    <div class="transfer-description">Upload statements to calculate required transfers</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Goals Tab -->
-            <div id="goals" class="tab-content">
-                <div class="goals-grid" id="goalsGrid">
-                    <!-- Dynamic goal cards will be inserted here -->
-                </div>
-
-                <!-- Goals Progress Chart -->
+                <!-- Recurring Bills Table -->
                 <div class="card">
                     <div class="card-header">
-                        <h3>Goals Progress Over Time</h3>
+                        <h3>📋 Recurring Bills</h3>
+                        <span class="badge" id="totalBillsAmount">$0.00/month</span>
                     </div>
                     <div class="card-body">
-                        <canvas id="goalsChart" class="chart-canvas"></canvas>
+                        <div class="bill-table-container">
+                            <table class="data-table" id="recurringBillsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Bill Name</th>
+                                        <th>Amount</th>
+                                        <th>Frequency</th>
+                                        <th>Last Paid</th>
+                                        <th>Next Due</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="6" class="no-data">Upload statements to auto-detect recurring bills</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bill Calendar -->
+                <div class="card">
+                    <div class="card-header"><h3>📅 Bill Calendar</h3></div>
+                    <div class="card-body">
+                        <div class="calendar-view" id="billCalendar"></div>
+                    </div>
+                </div>
+
+                <!-- Bills by Category -->
+                <div class="card">
+                    <div class="card-header"><h3>Bills Breakdown</h3></div>
+                    <div class="card-body"><canvas id="billsCategoryChart" class="chart-canvas"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ==================== SAVINGS TAB ==================== -->
+            <div id="savings" class="tab-content">
+                <!-- Savings Overview -->
+                <div class="savings-header">
+                    <div class="card savings-total-card">
+                        <div class="card-header"><h3>💎 Total Savings</h3></div>
+                        <div class="card-body">
+                            <div class="big-number" id="totalSavings">$0.00</div>
+                            <div class="change" id="savingsMonthlyChange">+$0.00 this month</div>
+                        </div>
+                    </div>
+                    <div class="card savings-rate-card">
+                        <div class="card-header"><h3>Monthly Contribution</h3></div>
+                        <div class="card-body">
+                            <div class="big-number" id="monthlyContribution">$0.00</div>
+                            <div class="change">Target vs Actual</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Savings Goals -->
+                <h2 class="section-title">🎯 Savings Goals</h2>
+                <div class="goals-grid" id="goalsGrid">
+                    <div class="card goal-card">
+                        <div class="card-body">
+                            <div class="goal-header">
+                                <div><div class="goal-name">Emergency Fund</div><div class="goal-target">Target: $20,000</div></div>
+                                <div class="goal-progress"><div class="goal-current" id="emergencyFundCurrent">$0.00</div><div class="goal-percentage" id="emergencyFundPct">0%</div></div>
+                            </div>
+                            <div class="progress-bar"><div class="progress-fill" id="emergencyFundBar" style="width: 0%"></div></div>
+                            <div class="goal-timeline" id="emergencyFundTimeline">Upload data to calculate timeline</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Savings Trend -->
+                <div class="card">
+                    <div class="card-header"><h3>Savings Growth Over Time</h3></div>
+                    <div class="card-body"><canvas id="savingsChart" class="chart-canvas"></canvas></div>
+                </div>
+
+                <!-- Where to Move Money -->
+                <div class="card action-card">
+                    <div class="card-header"><h3>💰 Recommended Savings Actions</h3></div>
+                    <div class="card-body">
+                        <div class="action-list" id="savingsActions">
+                            <p class="no-data">Upload wage and expense data to get personalized savings recommendations</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Insights Tab -->
+            <!-- ==================== PROJECTIONS TAB ==================== -->
+            <div id="projections" class="tab-content">
+                <!-- Projection Summary -->
+                <div class="projection-summary">
+                    <div class="card">
+                        <div class="card-header"><h3>🔮 Monthly Projection</h3></div>
+                        <div class="card-body">
+                            <div class="projection-grid">
+                                <div class="projection-item income">
+                                    <span class="label">Expected Income</span>
+                                    <span class="value" id="projectedIncome">$0.00</span>
+                                </div>
+                                <div class="projection-item bills">
+                                    <span class="label">Expected Bills</span>
+                                    <span class="value" id="projectedBills">$0.00</span>
+                                </div>
+                                <div class="projection-item spending">
+                                    <span class="label">Avg Spending</span>
+                                    <span class="value" id="projectedSpending">$0.00</span>
+                                </div>
+                                <div class="projection-item surplus">
+                                    <span class="label">Expected Surplus</span>
+                                    <span class="value" id="projectedSurplus">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Money Movement Plan -->
+                <div class="card action-card">
+                    <div class="card-header"><h3>💸 Recommended Money Movements</h3></div>
+                    <div class="card-body">
+                        <p class="action-description">Based on projected income and outgoings, here's where to move your money to cover all bills and hit savings targets:</p>
+                        <div class="movement-plan" id="movementPlan">
+                            <div class="movement-step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <div class="step-title">Upload statements to generate your personalized money movement plan</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projection Charts -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>12-Month Financial Projection</h3>
+                        <div class="chart-controls">
+                            <button class="chart-btn active" data-period="3">3M</button>
+                            <button class="chart-btn" data-period="6">6M</button>
+                            <button class="chart-btn" data-period="12">12M</button>
+                        </div>
+                    </div>
+                    <div class="card-body"><canvas id="projectionsChart" class="chart-canvas"></canvas></div>
+                </div>
+
+                <!-- Scenario Analysis -->
+                <div class="card">
+                    <div class="card-header"><h3>📊 What-If Scenarios</h3></div>
+                    <div class="card-body">
+                        <div class="scenarios-list" id="scenariosList">
+                            <div class="scenario-item">
+                                <span class="scenario-label">If you save 10% more</span>
+                                <span class="scenario-value" id="scenario10">Goals reached X months earlier</span>
+                            </div>
+                            <div class="scenario-item">
+                                <span class="scenario-label">If spending stays same</span>
+                                <span class="scenario-value" id="scenarioSame">Emergency fund full by X</span>
+                            </div>
+                            <div class="scenario-item">
+                                <span class="scenario-label">If one income stops</span>
+                                <span class="scenario-value" id="scenarioOneIncome">Runway: X months</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== HISTORY TAB ==================== -->
+            <div id="history" class="tab-content">
+                <!-- Monthly Summary Table -->
+                <div class="card">
+                    <div class="card-header"><h3>📈 Monthly Summary (History + Projections)</h3></div>
+                    <div class="card-body">
+                        <div class="history-table-container">
+                            <table class="data-table history-table" id="monthlyHistoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Total Income</th>
+                                        <th>Total Bills</th>
+                                        <th>Total Spending</th>
+                                        <th>Total Saved</th>
+                                        <th>Net Position</th>
+                                        <th>Type</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="7" class="no-data">Upload statements to build monthly history</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rolling Averages -->
+                <div class="card">
+                    <div class="card-header"><h3>📊 Rolling Averages (3-Month Trend)</h3></div>
+                    <div class="card-body">
+                        <div class="averages-grid">
+                            <div class="average-item">
+                                <span class="label">Avg Monthly Income</span>
+                                <span class="value" id="avgMonthlyIncome">$0.00</span>
+                            </div>
+                            <div class="average-item">
+                                <span class="label">Avg Monthly Bills</span>
+                                <span class="value" id="avgMonthlyBills">$0.00</span>
+                            </div>
+                            <div class="average-item">
+                                <span class="label">Avg Monthly Spending</span>
+                                <span class="value" id="avgMonthlySpending">$0.00</span>
+                            </div>
+                            <div class="average-item">
+                                <span class="label">Avg Monthly Savings</span>
+                                <span class="value" id="avgMonthlySavings">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Spending by Category Over Time -->
+                <div class="card">
+                    <div class="card-header"><h3>Spending Categories Over Time</h3></div>
+                    <div class="card-body"><canvas id="categoryHistoryChart" class="chart-canvas"></canvas></div>
+                </div>
+
+                <!-- Income vs Expenses Chart -->
+                <div class="card">
+                    <div class="card-header"><h3>Income vs Expenses (Monthly)</h3></div>
+                    <div class="card-body"><canvas id="incomeVsExpensesChart" class="chart-canvas"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ==================== INSIGHTS TAB ==================== -->
             <div id="insights" class="tab-content">
                 <div class="insights-cards">
                     <!-- BAI Recommendations -->
@@ -215,28 +547,14 @@
                         </div>
                         <div class="card-body">
                             <div class="insights-list" id="baiInsights">
-                                <p class="no-data">No insights yet. Upload some bank statements to get started!</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Spending Patterns -->
-                    <div class="card patterns-card">
-                        <div class="card-header">
-                            <h3>📈 Spending Patterns</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="patterns-list" id="spendingPatterns">
-                                <!-- Dynamic patterns will be inserted here -->
+                                <p class="no-data">Upload bank statements to get personalized financial insights from BAI</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Financial Health Score -->
                     <div class="card health-score-card">
-                        <div class="card-header">
-                            <h3>🏥 Financial Health Score</h3>
-                        </div>
+                        <div class="card-header"><h3>🏥 Financial Health Score</h3></div>
                         <div class="card-body">
                             <div class="health-score-display">
                                 <div class="score-circle" id="healthScoreCircle">
@@ -244,23 +562,23 @@
                                     <span class="score-label">/100</span>
                                 </div>
                                 <div class="score-breakdown" id="scoreBreakdown">
-                                    <!-- Score factors will be inserted here -->
+                                    <div class="score-factor"><span class="factor-name">Emergency Fund</span><span class="factor-score">--/25</span></div>
+                                    <div class="score-factor"><span class="factor-name">Savings Rate</span><span class="factor-score">--/25</span></div>
+                                    <div class="score-factor"><span class="factor-name">Debt Management</span><span class="factor-score">--/25</span></div>
+                                    <div class="score-factor"><span class="factor-name">Goal Progress</span><span class="factor-score">--/25</span></div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Projections -->
-                    <div class="card projections-card">
-                        <div class="card-header">
-                            <h3>🔮 Financial Projections</h3>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="projectionsChart" class="chart-canvas"></canvas>
-                        </div>
+                    <!-- Spending Patterns -->
+                    <div class="card">
+                        <div class="card-header"><h3>📈 Spending Patterns</h3></div>
+                        <div class="card-body"><canvas id="spendingPatternsChart" class="chart-canvas"></canvas></div>
                     </div>
                 </div>
             </div>
+
         </main>
 
         <!-- Footer -->
@@ -272,15 +590,12 @@
         </footer>
     </div>
 
-    <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/data.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/main.js"></script>
-
-    <!-- Service Worker for PWA -->
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js');
