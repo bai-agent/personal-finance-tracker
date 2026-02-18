@@ -23,8 +23,8 @@ class FinanceApp {
     try {
       console.log('🚀 Initializing Personal Finance Tracker...');
       
-      // Show loading screen
-      Utils.showLoading();
+      // Hide loading screen immediately - show content first
+      Utils.hideLoading();
       
       // Initialize core components
       await this.initializeCore();
@@ -43,20 +43,16 @@ class FinanceApp {
         this.initializePWA();
       }
       
-      // Hide loading screen
-      Utils.hideLoading();
-      
       this.isInitialized = true;
       this.state.dataLoaded = true;
       
       console.log('✅ Finance Tracker initialized successfully');
       
-      // Show welcome message
-      this.showWelcomeMessage();
-      
     } catch (error) {
       console.error('❌ Failed to initialize Finance Tracker:', error);
-      this.handleInitializationError(error);
+      // Still hide loading and show content even on error
+      Utils.hideLoading();
+      console.warn('App loaded with errors - some features may be limited');
     }
   }
 
@@ -300,28 +296,10 @@ class FinanceApp {
     }
   }
 
-  // Handle initialization error
+  // Handle initialization error - log only, don't destroy the page
   handleInitializationError(error) {
     Utils.hideLoading();
-    
-    // Show error message
-    const errorContainer = document.createElement('div');
-    errorContainer.className = 'initialization-error';
-    errorContainer.innerHTML = `
-      <div style="text-align: center; padding: 2rem; max-width: 500px; margin: 2rem auto;">
-        <h2>⚠️ Initialization Error</h2>
-        <p>Failed to load the Finance Tracker. Please try refreshing the page.</p>
-        <p style="font-size: 0.9em; color: #666; margin-top: 1rem;">
-          Error: ${error.message}
-        </p>
-        <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #2563eb; color: white; border: none; border-radius: 0.25rem; cursor: pointer;">
-          Refresh Page
-        </button>
-      </div>
-    `;
-    
-    document.body.innerHTML = '';
-    document.body.appendChild(errorContainer);
+    console.error('Initialization error:', error);
   }
 
   // Export data
