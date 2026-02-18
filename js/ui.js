@@ -16,13 +16,6 @@ class UIManager {
 
   // Bind all event listeners
   bindEventListeners() {
-    // Tab navigation
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-      tab.addEventListener('click', (e) => {
-        this.switchTab(e.target.dataset.tab);
-      });
-    });
-
     // Refresh button
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {

@@ -13,12 +13,6 @@
 
 /* Mobile-specific touch improvements */
 @media (max-width: 767px) {
-  /* Larger touch targets */
-  .nav-tab {
-    min-height: 48px;
-    padding: var(--spacing-md) var(--spacing-sm);
-  }
-  
   .btn {
     min-height: 48px;
     padding: var(--spacing-md) var(--spacing-lg);
@@ -29,14 +23,7 @@
     min-width: 44px;
   }
   
-  /* Improved mobile navigation */
-  .nav-tabs {
-    position: sticky;
-    top: 73px; /* Height of header + 1px */
-    z-index: 50;
-    background: var(--bg-card);
-    box-shadow: var(--shadow-sm);
-  }
+  /* Mobile navigation handled by dropdown in main.css */
   
   /* Mobile-optimized cards */
   .card-header {
