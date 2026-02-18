@@ -28,16 +28,30 @@
             </div>
         </header>
 
-        <!-- Navigation -->
-        <nav class="nav-tabs">
-            <button class="nav-tab active" data-tab="overview">📊 Overview</button>
-            <button class="nav-tab" data-tab="accounts">🏦 Accounts</button>
-            <button class="nav-tab" data-tab="wages">💵 Wages</button>
-            <button class="nav-tab" data-tab="bills">📋 Bills</button>
-            <button class="nav-tab" data-tab="savings">💎 Savings</button>
-            <button class="nav-tab" data-tab="projections">🔮 Projections</button>
-            <button class="nav-tab" data-tab="history">📈 History</button>
-            <button class="nav-tab" data-tab="insights">💡 Insights</button>
+        <!-- Navigation - Dropdown on mobile, tabs on desktop -->
+        <nav class="nav-container">
+            <div class="nav-dropdown-wrapper">
+                <select id="navDropdown" class="nav-dropdown" onchange="if(uiManager)uiManager.switchTab(this.value)">
+                    <option value="overview">📊 Overview</option>
+                    <option value="accounts">🏦 Accounts</option>
+                    <option value="wages">💵 Wages</option>
+                    <option value="bills">📋 Bills</option>
+                    <option value="savings">💎 Savings</option>
+                    <option value="projections">🔮 Projections</option>
+                    <option value="history">📈 History</option>
+                    <option value="insights">💡 Insights</option>
+                </select>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="overview">📊 Overview</button>
+                <button class="nav-tab" data-tab="accounts">🏦 Accounts</button>
+                <button class="nav-tab" data-tab="wages">💵 Wages</button>
+                <button class="nav-tab" data-tab="bills">📋 Bills</button>
+                <button class="nav-tab" data-tab="savings">💎 Savings</button>
+                <button class="nav-tab" data-tab="projections">🔮 Projections</button>
+                <button class="nav-tab" data-tab="history">📈 History</button>
+                <button class="nav-tab" data-tab="insights">💡 Insights</button>
+            </div>
         </nav>
 
         <!-- Loading Screen -->

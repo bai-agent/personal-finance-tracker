@@ -79,7 +79,12 @@ class UIManager {
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.classList.remove('active');
     });
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeTab) activeTab.classList.add('active');
+    
+    // Sync dropdown selector
+    const dropdown = document.getElementById('navDropdown');
+    if (dropdown) dropdown.value = tabName;
 
     // Show corresponding content
     document.querySelectorAll('.tab-content').forEach(content => {
