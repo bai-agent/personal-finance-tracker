@@ -1,9 +1,14 @@
 // Views module - handles account detail, bills calendar, projections, insights
 const FinanceViews = {
   dm: null,
+  calendarMonth: null, // {year, month} for bills calendar navigation
+  miniCalMonth: null,  // for overview mini calendar
 
   init(dataManager) {
     this.dm = dataManager;
+    var now = new Date();
+    this.calendarMonth = { year: now.getFullYear(), month: now.getMonth() };
+    this.miniCalMonth = { year: now.getFullYear(), month: now.getMonth() };
   },
 
   // ===== ACCOUNT DETAIL VIEW =====
@@ -42,7 +47,6 @@ const FinanceViews = {
       grid.classList.remove('hide');
     };
 
-    // Load transactions for this account
     this.loadAccountTransactions(accountName);
   },
 
@@ -65,11 +69,9 @@ const FinanceViews = {
         };
       }).sort((a, b) => (b.date || 0) - (a.date || 0));
 
-      // Charts
       FinanceCharts.accountBalanceLine('adBalChart', txns, dm);
       FinanceCharts.categoryDonut('adCatChart', txns, dm);
 
-      // Transaction list
       var el = document.getElementById('adTxns');
       if (el) {
         el.innerHTML = txns.length
@@ -83,49 +85,200 @@ const FinanceViews = {
     }
   },
 
-  // ===== BILLS CALENDAR =====
+  // ===== BILLS CALENDAR (shared logic) =====
+  _buildCalendarHtml(bills, calState, isMini) {
+    var dm = this.dm;
+    var year = calState.year, month = calState.month;
+    var now = new Date();
+    var firstDay = new Date(year, month, 1).getDay();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var monthName = new Date(year, month).toLocaleString('en-AU', { month: 'long', year: 'numeric' });
+
+    // Map bills to dates - handle recurring bills across months
+    var billsByDate = {};
+    (bills || []).forEach(b => {
+      var d = new Date(b['Next Due Date']);
+      if (isNaN(d.getTime())) return;
+      // Check if bill falls in this month
+      var freq = (b['Frequency'] || 'Monthly').toLowerCase();
+      var billDates = this._getBillDatesForMonth(b, year, month);
+      billDates.forEach(bd => {
+        var key = bd.getDate() + '-' + bd.getMonth() + '-' + bd.getFullYear();
+        if (!billsByDate[key]) billsByDate[key] = [];
+        billsByDate[key].push(b);
+      });
+    });
+
+    var dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    var calCells = dayHeaders.map(d => `<div class="cal-cell cal-hdr">${d}</div>`);
+    for (var i = 0; i < firstDay; i++) calCells.push('<div class="cal-cell"></div>');
+
+    for (var d = 1; d <= daysInMonth; d++) {
+      var key = d + '-' + month + '-' + year;
+      var isToday = d === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+      var dayBills = billsByDate[key];
+      var cls = 'cal-cell' + (isToday ? ' today' : '') + (dayBills ? ' has-bill' : '');
+      var dots = '';
+      if (dayBills) {
+        var dotHtml = dayBills.map(b => {
+          var color = FinanceCharts.getAccountColor(b['Account'] || '');
+          return `<span class="cal-acct-dot" style="background:${color}"></span>`;
+        }).join('');
+        dots = `<div class="cal-dots">${dotHtml}</div>`;
+      }
+      var dateId = isMini ? 'mc' : 'bc';
+      calCells.push(`<div class="${cls}" data-cal-date="${year}-${month}-${d}" data-cal-id="${dateId}"><div class="cal-date">${d}</div>${dots}</div>`);
+    }
+
+    return { monthName, calCells: calCells.join(''), billsByDate };
+  },
+
+  _getBillDatesForMonth(bill, year, month) {
+    var d = new Date(bill['Next Due Date']);
+    if (isNaN(d.getTime())) return [];
+    var freq = (bill['Frequency'] || 'Monthly').toLowerCase();
+    var dates = [];
+
+    if (freq === 'weekly') {
+      // Generate all weekly occurrences in this month
+      var start = new Date(year, month, 1);
+      var end = new Date(year, month + 1, 0);
+      var cur = new Date(d);
+      // Go back to find first occurrence before/in this month
+      while (cur > end) cur.setDate(cur.getDate() - 7);
+      while (cur < start) cur.setDate(cur.getDate() + 7);
+      while (cur <= end) {
+        if (cur >= start) dates.push(new Date(cur));
+        cur.setDate(cur.getDate() + 7);
+      }
+    } else if (freq === 'fortnightly' || freq === 'bi-weekly') {
+      var start = new Date(year, month, 1);
+      var end = new Date(year, month + 1, 0);
+      var cur = new Date(d);
+      while (cur > end) cur.setDate(cur.getDate() - 14);
+      while (cur < start) cur.setDate(cur.getDate() + 14);
+      while (cur <= end) {
+        if (cur >= start) dates.push(new Date(cur));
+        cur.setDate(cur.getDate() + 14);
+      }
+    } else if (freq === 'quarterly') {
+      if (d.getMonth() % 3 === month % 3) {
+        var dayOfMonth = Math.min(d.getDate(), new Date(year, month + 1, 0).getDate());
+        dates.push(new Date(year, month, dayOfMonth));
+      }
+    } else if (freq === 'yearly' || freq === 'annual') {
+      if (d.getMonth() === month) {
+        dates.push(new Date(year, month, d.getDate()));
+      }
+    } else {
+      // Monthly default
+      var dayOfMonth = Math.min(d.getDate(), new Date(year, month + 1, 0).getDate());
+      dates.push(new Date(year, month, dayOfMonth));
+    }
+    return dates;
+  },
+
+  _renderCalendarDetailPanel(dateStr, bills, container) {
+    var dm = this.dm;
+    var parts = dateStr.split('-');
+    var year = parseInt(parts[0]), month = parseInt(parts[1]), day = parseInt(parts[2]);
+    var key = day + '-' + month + '-' + year;
+
+    // Find bills for this date
+    var dayBills = [];
+    (bills || []).forEach(b => {
+      var billDates = this._getBillDatesForMonth(b, year, month);
+      billDates.forEach(bd => {
+        if (bd.getDate() === day) dayBills.push(b);
+      });
+    });
+
+    if (!dayBills.length) return;
+
+    // Remove existing detail panel
+    var existing = container.querySelector('.cal-detail-panel');
+    if (existing) existing.remove();
+
+    var dateLabel = new Date(year, month, day).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
+    var html = `<div class="cal-detail-panel"><div class="cal-detail-hd">${dateLabel}</div>`;
+    dayBills.forEach(b => {
+      var c = b['Currency'] || 'AUD';
+      var a = Math.abs(parseFloat(b['Amount'])) || 0;
+      var st = b['Status'] || 'Active';
+      var stCls = st === 'Overdue' ? 'overdue' : st === 'Due Soon' ? 'due-soon' : st === 'Upcoming' ? 'upcoming' : 'paid';
+      var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
+      html += `<div class="cal-detail-item">
+        <div class="cal-detail-left">
+          <div class="bill-name">${b['Bill Name'] || ''}</div>
+          <div class="bill-meta"><span class="acct-tag" style="background:${acctColor}">${(b['Account'] || '').replace(/ \(.*\)/, '')}</span> · ${b['Frequency'] || 'Monthly'}</div>
+        </div>
+        <div class="cal-detail-right">
+          <div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div>
+          <div class="bill-status ${stCls}">${st}</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    container.insertAdjacentHTML('beforeend', html);
+  },
+
+  // ===== MINI CALENDAR (Overview) =====
+  renderMiniCalendar(bills) {
+    var el = document.getElementById('ovMiniCal');
+    if (!el) return;
+    var self = this;
+    var cal = this._buildCalendarHtml(bills, this.miniCalMonth, true);
+
+    el.innerHTML = `<div style="padding:14px 18px">
+      <div class="cal-month">
+        <button class="cal-nav" id="mcPrev">‹</button>
+        <div class="cal-month-title">📅 ${cal.monthName}</div>
+        <button class="cal-nav" id="mcNext">›</button>
+      </div>
+      <div class="cal-grid">${cal.calCells}</div>
+    </div>`;
+
+    // Nav handlers
+    document.getElementById('mcPrev').onclick = () => {
+      self.miniCalMonth.month--;
+      if (self.miniCalMonth.month < 0) { self.miniCalMonth.month = 11; self.miniCalMonth.year--; }
+      self.renderMiniCalendar(bills);
+    };
+    document.getElementById('mcNext').onclick = () => {
+      self.miniCalMonth.month++;
+      if (self.miniCalMonth.month > 11) { self.miniCalMonth.month = 0; self.miniCalMonth.year++; }
+      self.renderMiniCalendar(bills);
+    };
+
+    // Click handlers for dates with bills
+    el.querySelectorAll('.cal-cell.has-bill').forEach(cell => {
+      cell.onclick = () => {
+        var dateStr = cell.dataset.calDate;
+        // Toggle - remove if same date clicked
+        var existing = el.querySelector('.cal-detail-panel');
+        if (existing && existing.dataset.date === dateStr) { existing.remove(); return; }
+        if (existing) existing.remove();
+        self._renderCalendarDetailPanel(dateStr, bills, el);
+        var panel = el.querySelector('.cal-detail-panel');
+        if (panel) panel.dataset.date = dateStr;
+      };
+    });
+  },
+
+  // ===== BILLS CALENDAR (Full - Bills tab) =====
   renderBillsCalendar(bills) {
     var dm = this.dm;
     var el = document.getElementById('biContent');
+    var self = this;
     if (!bills || !bills.length) {
       el.innerHTML = '<div class="empty">No bills detected yet</div>';
       return;
     }
 
-    var now = new Date();
-    var year = now.getFullYear();
-    var month = now.getMonth();
-
-    // Build calendar
-    var firstDay = new Date(year, month, 1).getDay();
-    var daysInMonth = new Date(year, month + 1, 0).getDate();
-    var monthName = now.toLocaleString('en-AU', { month: 'long', year: 'numeric' });
-
-    // Map bills to dates
-    var billsByDate = {};
-    bills.forEach(b => {
-      var d = new Date(b['Next Due Date']);
-      if (!isNaN(d.getTime())) {
-        var key = d.getDate() + '-' + d.getMonth() + '-' + d.getFullYear();
-        if (!billsByDate[key]) billsByDate[key] = [];
-        billsByDate[key].push(b);
-      }
-    });
-
-    var dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    var calCells = dayHeaders.map(d => `<div class="cal-cell" style="font-size:.58rem;color:var(--sub);font-weight:700">${d}</div>`);
-    for (var i = 0; i < firstDay; i++) calCells.push('<div class="cal-cell"></div>');
-    for (var d = 1; d <= daysInMonth; d++) {
-      var key = d + '-' + month + '-' + year;
-      var isToday = d === now.getDate() && month === now.getMonth();
-      var hasBill = billsByDate[key];
-      var cls = 'cal-cell' + (isToday ? ' today' : '') + (hasBill ? ' has-bill' : '');
-      var dot = hasBill ? '<div class="cal-dot"></div>' : '';
-      var amt = hasBill ? '<div class="cal-amt">' + dm.formatCurrency(hasBill.reduce((s, b) => s + Math.abs(parseFloat(b['Amount']) || 0), 0)) + '</div>' : '';
-      calCells.push(`<div class="${cls}"><div class="cal-date">${d}</div>${dot}${amt}</div>`);
-    }
+    var cal = this._buildCalendarHtml(bills, this.calendarMonth, false);
 
     // Bill list with status
+    var now = new Date();
     var billList = bills.map(b => {
       var c = b['Currency'] || 'AUD';
       var a = Math.abs(parseFloat(b['Amount'])) || 0;
@@ -145,12 +298,42 @@ const FinanceViews = {
     }).join('');
 
     el.innerHTML = `
-      <div style="padding:14px 18px">
-        <div class="cal-month"><div class="cal-month-title">📅 ${monthName}</div></div>
-        <div class="cal-grid">${calCells.join('')}</div>
+      <div style="padding:14px 18px" id="billsCalWrap">
+        <div class="cal-month">
+          <button class="cal-nav" id="bcPrev">‹</button>
+          <div class="cal-month-title">📅 ${cal.monthName}</div>
+          <button class="cal-nav" id="bcNext">›</button>
+        </div>
+        <div class="cal-grid">${cal.calCells}</div>
       </div>
       <div style="padding:0 18px 14px">${billList}</div>
     `;
+
+    // Nav handlers
+    document.getElementById('bcPrev').onclick = () => {
+      self.calendarMonth.month--;
+      if (self.calendarMonth.month < 0) { self.calendarMonth.month = 11; self.calendarMonth.year--; }
+      self.renderBillsCalendar(bills);
+    };
+    document.getElementById('bcNext').onclick = () => {
+      self.calendarMonth.month++;
+      if (self.calendarMonth.month > 11) { self.calendarMonth.month = 0; self.calendarMonth.year++; }
+      self.renderBillsCalendar(bills);
+    };
+
+    // Click handlers for dates with bills
+    var wrap = document.getElementById('billsCalWrap');
+    wrap.querySelectorAll('.cal-cell.has-bill').forEach(cell => {
+      cell.onclick = () => {
+        var dateStr = cell.dataset.calDate;
+        var existing = wrap.querySelector('.cal-detail-panel');
+        if (existing && existing.dataset.date === dateStr) { existing.remove(); return; }
+        if (existing) existing.remove();
+        self._renderCalendarDetailPanel(dateStr, bills, wrap);
+        var panel = wrap.querySelector('.cal-detail-panel');
+        if (panel) panel.dataset.date = dateStr;
+      };
+    });
   },
 
   // ===== WAGES =====
@@ -162,7 +345,6 @@ const FinanceViews = {
       return;
     }
 
-    // Stats
     var byPerson = { Bailey: 0, Katie: 0 };
     var count = { Bailey: 0, Katie: 0 };
     wages.forEach(w => {
@@ -223,65 +405,295 @@ const FinanceViews = {
     FinanceCharts.savingsRateTrend('savRateChart', history, dm);
   },
 
-  // ===== PROJECTIONS =====
+  // ===== PROJECTIONS — "Where to Move Money" Smart Advisor =====
   renderProjections(projections, bills, accounts) {
     var dm = this.dm;
     var el = document.getElementById('projContent');
     if (!el) return;
 
-    // Transfer recommendations
     var accts = dm.getAccounts();
-    var upcomingBills = (bills || []).filter(b => {
+    var now = new Date();
+    var savings = dm.cache.savings || [];
+
+    // Upcoming bills in 7, 14, 30 days
+    var billsNext7 = [], billsNext14 = [], billsNext30 = [];
+    (bills || []).forEach(b => {
       var d = new Date(b['Next Due Date']);
-      var diff = (d - new Date()) / (1000 * 60 * 60 * 24);
-      return diff >= 0 && diff <= 30;
-    });
-
-    // Group bills by account
-    var billsByAcct = {};
-    upcomingBills.forEach(b => {
-      var acct = b['Account'] || 'Joint (Commonwealth)';
-      if (!billsByAcct[acct]) billsByAcct[acct] = 0;
+      var diff = (d - now) / (1000 * 60 * 60 * 24);
+      if (diff < 0) diff = 0; // overdue
       var c = b['Currency'] || 'AUD';
-      billsByAcct[acct] += dm.convert(Math.abs(parseFloat(b['Amount']) || 0), c);
+      var amt = dm.convert(Math.abs(parseFloat(b['Amount']) || 0), c);
+      var entry = { ...b, convertedAmt: amt, daysUntil: diff, dueDate: d };
+      if (diff <= 30) { billsNext30.push(entry); }
+      if (diff <= 14) { billsNext14.push(entry); }
+      if (diff <= 7) { billsNext7.push(entry); }
     });
 
+    var total7 = billsNext7.reduce((s, b) => s + b.convertedAmt, 0);
+    var total14 = billsNext14.reduce((s, b) => s + b.convertedAmt, 0);
+    var total30 = billsNext30.reduce((s, b) => s + b.convertedAmt, 0);
+
+    // Summary cards
+    var summaryHtml = `
+      <div class="advisor-summary">
+        <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total7)}</div><div class="advisor-stat-lbl">Next 7 days</div><div class="advisor-stat-count">${billsNext7.length} bill${billsNext7.length !== 1 ? 's' : ''}</div></div>
+        <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total14)}</div><div class="advisor-stat-lbl">Next 14 days</div><div class="advisor-stat-count">${billsNext14.length} bill${billsNext14.length !== 1 ? 's' : ''}</div></div>
+        <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total30)}</div><div class="advisor-stat-lbl">Next 30 days</div><div class="advisor-stat-count">${billsNext30.length} bill${billsNext30.length !== 1 ? 's' : ''}</div></div>
+      </div>`;
+
+    // Group bills by account for shortfall analysis
+    var billsByAcct = {};
+    billsNext30.forEach(b => {
+      var acct = b['Account'] || 'Joint (Commonwealth)';
+      if (!billsByAcct[acct]) billsByAcct[acct] = { total: 0, bills: [] };
+      billsByAcct[acct].total += b.convertedAmt;
+      billsByAcct[acct].bills.push(b);
+    });
+
+    // Generate transfer recommendations
     var transfers = [];
-    Object.entries(billsByAcct).forEach(([acctName, needed]) => {
+    Object.entries(billsByAcct).forEach(([acctName, data]) => {
       var acct = accts.find(a => a.name === acctName);
-      if (acct && acct.balance < needed) {
-        var shortfall = needed - acct.balance;
-        // Find account with surplus
-        var surplus = accts.filter(a => a.name !== acctName && a.balance > 500).sort((a, b) => b.balance - a.balance);
+      if (!acct) return;
+      if (acct.balance < data.total) {
+        var shortfall = data.total - acct.balance;
+        // Find nearest due bill for urgency
+        var nearestBill = data.bills.sort((a, b) => a.daysUntil - b.daysUntil)[0];
+        var urgency = nearestBill.daysUntil <= 0 ? 'overdue' : nearestBill.daysUntil <= 7 ? 'urgent' : nearestBill.daysUntil <= 14 ? 'soon' : 'planned';
+
+        // Find best source account
+        var surplus = accts.filter(a => a.name !== acctName && a.balance > shortfall).sort((a, b) => b.balance - a.balance);
         if (surplus.length) {
+          var dueLabel = nearestBill.daysUntil <= 0 ? 'OVERDUE' : nearestBill.daysUntil <= 1 ? 'tomorrow' : 'by ' + nearestBill.dueDate.toLocaleDateString('en-AU', { weekday: 'long' });
           transfers.push({
             from: surplus[0].name,
             to: acctName,
             amount: shortfall,
-            reason: 'Cover upcoming bills (' + dm.formatCurrency(needed) + ' due this month)'
+            reason: `Cover ${data.bills.length} upcoming bill${data.bills.length > 1 ? 's' : ''} (${dm.formatCurrency(data.total)} due)`,
+            urgency: urgency,
+            deadline: dueLabel,
+            billNames: data.bills.map(b => b['Bill Name']).join(', ')
+          });
+        } else {
+          // No single account can cover - flag it
+          transfers.push({
+            from: null,
+            to: acctName,
+            amount: shortfall,
+            reason: `Shortfall for upcoming bills — no single account has enough funds!`,
+            urgency: 'overdue',
+            deadline: 'IMMEDIATE',
+            billNames: data.bills.map(b => b['Bill Name']).join(', ')
           });
         }
       }
     });
 
-    var transferHtml = transfers.length
-      ? transfers.map(t => `<div class="transfer-suggest"><div class="amount">${dm.formatCurrency(t.amount)}</div><div class="from-to">${t.from.replace(/ \(.*\)/, '')} → ${t.to.replace(/ \(.*\)/, '')}</div><div class="reason">${t.reason}</div></div>`).join('')
-      : '<div style="padding:12px;text-align:center;font-size:.78rem;color:var(--green)">✅ All accounts look good — no transfers needed</div>';
+    // Savings goal progress
+    var savingsHtml = '';
+    if (savings.length) {
+      var totalSaved = savings.reduce((s, g) => s + (parseFloat(g['Current Amount']) || 0), 0);
+      var totalTarget = savings.reduce((s, g) => s + (parseFloat(g['Target Amount']) || 0), 0);
+      var remaining = totalTarget - totalSaved;
+      var saverAcct = accts.find(a => a.name === 'Joint Saver (Commonwealth)');
+      var saverBal = saverAcct ? saverAcct.balance : 0;
 
-    // Bills vs balance summary
-    var summaryHtml = accts.map(a => {
-      var billsAmt = billsByAcct[a.name] || 0;
+      savingsHtml = `<div class="pnl"><div class="pnl-hd"><h3>💎 Savings Goal Progress</h3></div><div style="padding:14px 18px">`;
+      savings.forEach(g => {
+        var cur = parseFloat(g['Current Amount']) || 0;
+        var tgt = parseFloat(g['Target Amount']) || 1;
+        var pc = Math.min(100, cur / tgt * 100).toFixed(1);
+        var needed = Math.max(0, tgt - cur);
+        savingsHtml += `<div class="advisor-goal">
+          <div class="advisor-goal-top"><span class="advisor-goal-name">${g['Goal Name']}</span><span class="advisor-goal-pc">${pc}%</span></div>
+          <div class="pbar"><div class="pfill" style="width:${pc}%"></div></div>
+          <div class="advisor-goal-info">${dm.formatCurrency(cur)} / ${dm.formatCurrency(tgt)} · ${dm.formatCurrency(needed)} to go</div>
+        </div>`;
+      });
+      if (remaining > 0) {
+        // Suggest moving money to savings
+        var bestSource = accts.filter(a => a.purpose !== 'Savings' && a.balance > 200).sort((a, b) => b.balance - a.balance);
+        if (bestSource.length) {
+          var suggestAmt = Math.min(remaining, bestSource[0].balance * 0.2); // Suggest 20% of best account
+          transfers.push({
+            from: bestSource[0].name,
+            to: 'Joint Saver (Commonwealth)',
+            amount: Math.round(suggestAmt),
+            reason: `Contribute to savings goals (${dm.formatCurrency(remaining)} remaining)`,
+            urgency: 'planned',
+            deadline: 'when convenient',
+            billNames: 'Savings'
+          });
+        }
+      }
+      savingsHtml += '</div></div>';
+    }
+
+    // Transfer cards
+    var transferHtml = '';
+    if (transfers.length) {
+      transferHtml = transfers.map(t => {
+        var urgCls = t.urgency === 'overdue' ? 'advisor-urgent-red' : t.urgency === 'urgent' ? 'advisor-urgent-yellow' : t.urgency === 'soon' ? 'advisor-urgent-yellow' : 'advisor-urgent-green';
+        var urgLabel = t.urgency === 'overdue' ? '🔴 OVERDUE' : t.urgency === 'urgent' ? '🟡 This Week' : t.urgency === 'soon' ? '🟡 Soon' : '🟢 Planned';
+        var fromLabel = t.from ? t.from.replace(/ \(.*\)/, '') : '⚠️ Multiple sources needed';
+        var toLabel = t.to.replace(/ \(.*\)/, '');
+        return `<div class="advisor-card ${urgCls}">
+          <div class="advisor-card-top">
+            <div class="advisor-card-amt">${dm.formatCurrency(t.amount)}</div>
+            <div class="advisor-card-urg">${urgLabel}</div>
+          </div>
+          <div class="advisor-card-route">${fromLabel} → ${toLabel}</div>
+          <div class="advisor-card-reason">${t.reason}</div>
+          <div class="advisor-card-deadline">⏰ ${t.deadline}</div>
+          <div class="advisor-card-bills">${t.billNames}</div>
+        </div>`;
+      }).join('');
+    } else {
+      transferHtml = '<div class="advisor-ok">✅ All accounts look good — no transfers needed right now</div>';
+    }
+
+    // Account vs bills breakdown
+    var acctBreakdown = accts.map(a => {
+      var billsAmt = billsByAcct[a.name] ? billsByAcct[a.name].total : 0;
       var ok = a.balance >= billsAmt;
-      return `<div class="proj-row"><span class="label">${a.name.replace(/ \(.*\)/, '')}</span><span class="value" style="color:${ok ? 'var(--green)' : 'var(--red)'}">${dm.formatCurrency(a.balance)}${billsAmt > 0 ? ' / ' + dm.formatCurrency(billsAmt) + ' bills' : ''}</span></div>`;
+      var shortfall = ok ? 0 : billsAmt - a.balance;
+      return `<div class="proj-row">
+        <span class="label"><span class="acct-tag" style="background:${FinanceCharts.getAccountColor(a.name)}">${a.name.replace(/ \(.*\)/, '')}</span></span>
+        <span class="value" style="color:${ok ? 'var(--green)' : 'var(--red)'}">
+          ${dm.formatCurrency(a.balance)}${billsAmt > 0 ? ' / ' + dm.formatCurrency(billsAmt) : ''}${!ok ? ' <span style="font-size:.6rem;color:var(--red)">⚠️ -' + dm.formatCurrency(shortfall) + '</span>' : ''}
+        </span>
+      </div>`;
     }).join('');
 
     el.innerHTML = `
-      <div class="pnl"><div class="pnl-hd"><h3>💸 Where to Move Money</h3></div><div style="padding:14px 18px">${transferHtml}</div></div>
-      <div class="pnl"><div class="pnl-hd"><h3>📊 Account vs Bills</h3></div><div style="padding:4px 18px">${summaryHtml}</div></div>
+      <div class="pnl"><div class="pnl-hd"><h3>💸 Where to Move Money</h3></div>
+        <div style="padding:14px 18px">${summaryHtml}${transferHtml}</div>
+      </div>
+      ${savingsHtml}
+      <div class="pnl"><div class="pnl-hd"><h3>🏦 Account vs Obligations</h3></div><div style="padding:4px 18px">${acctBreakdown}</div></div>
       <div class="pnl"><div class="pnl-hd"><h3>📈 Monthly Projections</h3></div><div class="chart-w"><canvas id="projChart"></canvas></div></div>
     `;
 
     FinanceCharts.projectionChart('projChart', projections, dm);
+  },
+
+  // ===== TRENDS & ANALYSIS =====
+  renderTrendsAnalysis(transactions, history) {
+    var dm = this.dm;
+    var el = document.getElementById('ovTrends');
+    if (!el) return;
+
+    var txns = transactions || [];
+    if (!txns.length) { el.innerHTML = '<div class="empty">Not enough data</div>'; return; }
+
+    var now = new Date();
+    var curMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    var prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var prevMonth = prevDate.getFullYear() + '-' + String(prevDate.getMonth() + 1).padStart(2, '0');
+
+    // Category spending this month vs last month
+    var catsCur = {}, catsPrev = {};
+    txns.filter(t => t.amount < 0 && t.date && t.category !== 'Transfer').forEach(t => {
+      var key = t.date.getFullYear() + '-' + String(t.date.getMonth() + 1).padStart(2, '0');
+      var cat = t.category || 'Miscellaneous';
+      if (key === curMonth) catsCur[cat] = (catsCur[cat] || 0) + Math.abs(t.convertedAmount);
+      if (key === prevMonth) catsPrev[cat] = (catsPrev[cat] || 0) + Math.abs(t.convertedAmount);
+    });
+
+    var allCats = [...new Set([...Object.keys(catsCur), ...Object.keys(catsPrev)])];
+    var comparisons = allCats.map(cat => {
+      var cur = catsCur[cat] || 0;
+      var prev = catsPrev[cat] || 0;
+      var change = prev > 0 ? ((cur - prev) / prev * 100) : (cur > 0 ? 100 : 0);
+      return { cat, cur, prev, change };
+    }).filter(c => c.cur > 0 || c.prev > 0).sort((a, b) => b.cur - a.cur);
+
+    var compHtml = comparisons.slice(0, 8).map(c => {
+      var arrow = c.change > 0 ? '↑' : c.change < 0 ? '↓' : '→';
+      var cls = c.change > 5 ? 'neg' : c.change < -5 ? 'pos' : '';
+      var color = FinanceCharts.getCategoryColor(c.cat);
+      return `<div class="trend-row">
+        <span class="trend-dot" style="background:${color}"></span>
+        <span class="trend-name">${c.cat}</span>
+        <span class="trend-vals">${dm.formatCurrency(c.cur)}</span>
+        <span class="trend-change ${cls}">${arrow} ${Math.abs(c.change).toFixed(0)}%</span>
+      </div>`;
+    }).join('');
+
+    // Generate smart suggestions
+    var suggestions = [];
+    var totalCurSpend = Object.values(catsCur).reduce((s, v) => s + v, 0);
+    var totalPrevSpend = Object.values(catsPrev).reduce((s, v) => s + v, 0);
+
+    // Biggest category
+    if (comparisons.length) {
+      var biggest = comparisons[0];
+      suggestions.push({ icon: '📊', text: `Your biggest expense category is <b>${biggest.cat}</b> at <b>${dm.formatCurrency(biggest.cur)}</b>/month`, type: 'info' });
+    }
+
+    // Categories that increased significantly
+    comparisons.forEach(c => {
+      if (c.change > 20 && c.prev > 50) {
+        var tips = {
+          'Food & Dining': 'consider cooking more at home',
+          'Entertainment': 'look for free activities this week',
+          'Shopping': 'try a no-spend challenge',
+          'Transportation': 'consider carpooling or public transport'
+        };
+        var tip = tips[c.cat] || 'consider reducing this spending';
+        suggestions.push({ icon: '⚠️', text: `<b>${c.cat}</b> spending is up <b class="neg">${c.change.toFixed(0)}%</b> this month — ${tip}`, type: 'warning' });
+      }
+    });
+
+    // Categories that decreased
+    comparisons.forEach(c => {
+      if (c.change < -15 && c.prev > 50) {
+        suggestions.push({ icon: '🎉', text: `<b>${c.cat}</b> spending is down <b class="pos">${Math.abs(c.change).toFixed(0)}%</b> — great job!`, type: 'success' });
+      }
+    });
+
+    // Overall spending trend
+    if (totalPrevSpend > 0) {
+      var overallChange = ((totalCurSpend - totalPrevSpend) / totalPrevSpend * 100);
+      if (overallChange > 10) {
+        suggestions.push({ icon: '📈', text: `Overall spending is up <b class="neg">${overallChange.toFixed(0)}%</b> vs last month`, type: 'warning' });
+      } else if (overallChange < -10) {
+        suggestions.push({ icon: '📉', text: `Overall spending is down <b class="pos">${Math.abs(overallChange).toFixed(0)}%</b> — you're saving more!`, type: 'success' });
+      }
+    }
+
+    // Savings rate estimate
+    var income = txns.filter(t => t.amount > 0 && t.date && t.date.getMonth() === now.getMonth() && t.date.getFullYear() === now.getFullYear()).reduce((s, t) => s + t.convertedAmount, 0);
+    if (income > 0 && totalCurSpend > 0) {
+      var savingsEst = income - totalCurSpend;
+      var dayOfMonth = now.getDate();
+      var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      var projectedSavings = savingsEst * (daysInMonth / dayOfMonth);
+      suggestions.push({ icon: '💰', text: `You're on track to save approximately <b class="pos">${dm.formatCurrency(Math.max(0, projectedSavings))}</b> this month`, type: 'info' });
+    }
+
+    // Consistent categories
+    comparisons.forEach(c => {
+      if (Math.abs(c.change) < 10 && c.cur > 100 && c.prev > 100) {
+        suggestions.push({ icon: '📌', text: `<b>${c.cat}</b> spending is consistent at ~<b>${dm.formatCurrency(c.cur)}</b>/month`, type: 'info' });
+      }
+    });
+
+    var suggestHtml = suggestions.slice(0, 6).map(s => {
+      var bgCls = s.type === 'warning' ? 'suggest-warn' : s.type === 'success' ? 'suggest-good' : 'suggest-info';
+      return `<div class="suggest-card ${bgCls}"><span class="suggest-icon">${s.icon}</span><span class="suggest-text">${s.text}</span></div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div style="padding:14px 18px">
+        <div class="trend-header">Category Comparison <span class="trend-sub">vs last month</span></div>
+        ${compHtml || '<div class="empty" style="padding:10px">Not enough data to compare</div>'}
+      </div>
+      <div style="padding:0 18px 14px">
+        <div class="trend-header">💡 Suggestions</div>
+        ${suggestHtml || '<div class="empty" style="padding:10px">Keep spending to generate insights!</div>'}
+      </div>
+    `;
   },
 
   // ===== INSIGHTS =====
@@ -349,6 +761,7 @@ const FinanceViews = {
         <div class="insight-card"><div class="insight-big" style="color:var(--red)">${dm.formatCurrency(avgDaily)}</div><div class="insight-label">Avg Daily Spend</div></div>
         <div class="insight-card"><div class="insight-big" style="color:var(--blue)">${txns.length}</div><div class="insight-label">Total Transactions</div></div>
       </div>
+      <div class="pnl"><div class="pnl-hd"><h3>📈 Spending Over Time</h3></div><div class="chart-w"><canvas id="spendOverTimeChart"></canvas></div></div>
       <div class="insight-card"><h4>🏆 Top Spending Categories</h4>${catHtml}</div>
       ${momHtml}
       <div class="pnl"><div class="pnl-hd"><h3>📊 Spending by Day of Week</h3></div><div class="chart-w"><canvas id="dowChart"></canvas></div></div>
@@ -356,6 +769,7 @@ const FinanceViews = {
       <div class="insight-card"><h4>💰 Biggest Income</h4>${bigInHtml || '<div class="empty">No income</div>'}</div>
     `;
 
+    FinanceCharts.spendingOverTime('spendOverTimeChart', txns, dm);
     FinanceCharts.dayOfWeekBar('dowChart', txns, dm);
   }
 };

@@ -322,6 +322,65 @@ const FinanceCharts = {
     });
   },
 
+  // Spending over time - transaction-level cumulative + daily bars
+  spendingOverTime(canvasId, transactions, dm) {
+    this.destroy(canvasId);
+    var cv = document.getElementById(canvasId);
+    if (!cv) return;
+    var expenses = transactions.filter(t => t.amount < 0 && t.date && t.category !== 'Transfer')
+      .sort((a, b) => (a.date || 0) - (b.date || 0));
+    if (!expenses.length) { cv.parentElement.innerHTML = '<div class="empty">No spending data</div>'; return; }
+
+    // Group by date
+    var dailyMap = {};
+    expenses.forEach(t => {
+      var key = t.date.toISOString().split('T')[0];
+      dailyMap[key] = (dailyMap[key] || 0) + Math.abs(t.convertedAmount);
+    });
+
+    var dates = Object.keys(dailyMap).sort();
+    var dailyAmounts = dates.map(d => dailyMap[d]);
+    var cumulative = [];
+    var sum = 0;
+    dailyAmounts.forEach(a => { sum += a; cumulative.push(sum); });
+
+    var labels = dates.map(d => {
+      var dt = new Date(d);
+      return dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    });
+
+    this.instances[canvasId] = new Chart(cv, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'line', label: 'Cumulative', data: cumulative,
+            borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,.06)',
+            fill: true, tension: .35, pointRadius: 0, borderWidth: 2, yAxisID: 'y1', order: 0
+          },
+          {
+            type: 'bar', label: 'Daily', data: dailyAmounts,
+            backgroundColor: 'rgba(79,140,255,.5)', borderRadius: 3, yAxisID: 'y', order: 1
+          }
+        ]
+      },
+      options: {
+        ...this.defaults,
+        plugins: {
+          ...this.defaults.plugins,
+          legend: { display: true, position: 'top', labels: { color: '#7e90b5', font: { size: 9 }, boxWidth: 10, boxHeight: 10 } },
+          tooltip: { ...this.defaults.plugins.tooltip, callbacks: { label: ctx => ctx.dataset.label + ': ' + dm.formatCurrency(ctx.raw) } }
+        },
+        scales: {
+          x: this.defaults.scales.x,
+          y: { ...this.defaults.scales.y, position: 'left', ticks: { ...this.defaults.scales.y.ticks, callback: v => dm.formatCurrency(v) } },
+          y1: { ...this.defaults.scales.y, position: 'right', grid: { display: false }, ticks: { ...this.defaults.scales.y.ticks, callback: v => dm.formatCurrency(v) } }
+        }
+      }
+    });
+  },
+
   // Day of week spending pattern
   dayOfWeekBar(canvasId, transactions, dm) {
     this.destroy(canvasId);

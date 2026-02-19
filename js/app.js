@@ -162,8 +162,14 @@
     FinanceCharts.incomeExpenseBar('ovIncExpChart', dm.cache.history || [], dm);
     FinanceCharts.spendingTrend('ovTrendChart', dm.cache.history || [], dm);
 
-    // Upcoming bills mini-calendar
+    // Mini calendar on overview
+    FinanceViews.renderMiniCalendar(dm.cache.bills || []);
+
+    // Upcoming bills list
     renderUpcomingBills();
+
+    // Trends & Analysis
+    FinanceViews.renderTrendsAnalysis(l, dm.cache.history || []);
   }
 
   function renderUpcomingBills() {
