@@ -7,7 +7,7 @@
 var SHEET_ID = '1jIDRs9Vbm97RYbSf40jsTth6J8-WKcBgccX5EvpMTZ4';
 
 var TABS = {
-  LEDGER: 'Ledger',
+  TRANSACTIONS: 'Transactions',
   ACCOUNTS: 'Accounts',
   WAGES: 'Wages',
   BILLS: 'Recurring Bills',
@@ -45,11 +45,11 @@ function doGet(e) {
       case 'all':
         result = getAllData(ss, days);
         break;
-      case 'ledger':
-        result = getLedgerData(ss, days, month, accounts);
+      case 'transactions':
+        result = getTransactionData(ss, days, month, accounts);
         break;
-      case 'ledger_all':
-        result = getLedgerData(ss, 0, month, accounts);
+      case 'transactions_all':
+        result = getTransactionData(ss, 0, month, accounts);
         break;
       case 'accounts':
         result = { data: readSheet(ss, TABS.ACCOUNTS), timestamp: now() };
@@ -78,11 +78,11 @@ function now() { return new Date().toISOString(); }
 // ==================== DATA RETRIEVAL ====================
 
 function getAllData(ss, days) {
-  var ledger = getLedgerData(ss, days, null, null);
+  var txns = getTransactionData(ss, days, null, null);
   return {
     accounts: readSheet(ss, TABS.ACCOUNTS),
-    ledger: ledger.data,
-    ledgerMeta: ledger.meta,
+    transactions: txns.data,
+    transactionsMeta: txns.meta,
     wages: readSheet(ss, TABS.WAGES),
     bills: readSheet(ss, TABS.BILLS),
     savings: readSheet(ss, TABS.SAVINGS),
@@ -94,8 +94,8 @@ function getAllData(ss, days) {
   };
 }
 
-function getLedgerData(ss, days, month, accountFilter) {
-  var sheet = ss.getSheetByName(TABS.LEDGER);
+function getTransactionData(ss, days, month, accountFilter) {
+  var sheet = ss.getSheetByName(TABS.TRANSACTIONS);
   if (!sheet || sheet.getLastRow() <= 1) return { data: [], meta: { total: 0 } };
 
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -180,7 +180,7 @@ function initializeSpreadsheet() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
 
   // Ledger - the main unified statement
-  createSheet(ss, TABS.LEDGER, [
+  createSheet(ss, TABS.TRANSACTIONS, [
     'Date', 'Description', 'Amount', 'Balance After', 'Category',
     'Account', 'Bank', 'User', 'Currency', 'Type', 'ID', 'Notes'
   ]);
@@ -231,9 +231,9 @@ function createSheet(ss, name, headers) {
 }
 
 function formatSheets(ss) {
-  var ledger = ss.getSheetByName(TABS.LEDGER);
+  var txSheet = ss.getSheetByName(TABS.TRANSACTIONS);
   if (ledger) {
-    ledger.getRange('C2:D10000').setNumberFormat('#,##0.00');
+    txSheet.getRange('C2:D10000').setNumberFormat('#,##0.00');
   }
   var acc = ss.getSheetByName(TABS.ACCOUNTS);
   if (acc) acc.getRange('F2:H100').setNumberFormat('#,##0.00');
@@ -269,10 +269,10 @@ function updateExchangeRate() {
 
 // ==================== LEDGER OPERATIONS ====================
 
-function addLedgerEntry(date, description, amount, account, category, notes) {
+function addTransaction(date, description, amount, account, category, notes) {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var ledger = ss.getSheetByName(TABS.LEDGER);
-  if (!ledger) return;
+  var txSheet = ss.getSheetByName(TABS.TRANSACTIONS);
+  if (!txSheet) return;
 
   var acct = ACCOUNTS_LIST.filter(function(a) { return a.name === account; })[0];
   var currency = acct ? acct.currency : 'AUD';
@@ -281,12 +281,12 @@ function addLedgerEntry(date, description, amount, account, category, notes) {
   var type = amount > 0 ? 'income' : 'expense';
 
   // Calculate balance after
-  var balanceAfter = getLastBalance(ledger, account) + amount;
+  var balanceAfter = getLastBalance(txSheet, account) + amount;
 
   // Auto-categorize if not provided
   if (!category) category = categorize(description, amount);
 
-  ledger.appendRow([
+  txSheet.appendRow([
     new Date(date), description, amount, balanceAfter, category,
     account, bank, user, currency, type,
     'txn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -299,9 +299,9 @@ function addLedgerEntry(date, description, amount, account, category, notes) {
   return balanceAfter;
 }
 
-function getLastBalance(ledger, account) {
-  if (ledger.getLastRow() <= 1) return 0;
-  var data = ledger.getRange(2, 1, ledger.getLastRow() - 1, 12).getValues();
+function getLastBalance(txSheet, account) {
+  if (txSheet.getLastRow() <= 1) return 0;
+  var data = txSheet.getRange(2, 1, txSheet.getLastRow() - 1, 12).getValues();
   // Find last entry for this account (column 5 = Account, column 3 = Balance After)
   for (var i = data.length - 1; i >= 0; i--) {
     if (data[i][5] === account) return data[i][3] || 0;
@@ -376,11 +376,11 @@ function dailyProcessing() {
 
 function updateMonthlyHistory() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var ledger = ss.getSheetByName(TABS.LEDGER);
+  var txSheet = ss.getSheetByName(TABS.TRANSACTIONS);
   var historySheet = ss.getSheetByName(TABS.HISTORY);
-  if (!ledger || !historySheet || ledger.getLastRow() <= 1) return;
+  if (!txSheet || !historySheet || txSheet.getLastRow() <= 1) return;
 
-  var data = ledger.getRange(2, 1, ledger.getLastRow() - 1, 12).getValues();
+  var data = txSheet.getRange(2, 1, txSheet.getLastRow() - 1, 12).getValues();
 
   var monthly = {};
   data.forEach(function(row) {
@@ -459,9 +459,9 @@ function checkUpcomingBills() {
 
 function getAvailableMonths() {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var ledger = ss.getSheetByName(TABS.LEDGER);
-  if (!ledger || ledger.getLastRow() <= 1) return [];
-  var dates = ledger.getRange(2, 1, ledger.getLastRow() - 1, 1).getValues();
+  var txSheet = ss.getSheetByName(TABS.TRANSACTIONS);
+  if (!txSheet || txSheet.getLastRow() <= 1) return [];
+  var dates = txSheet.getRange(2, 1, txSheet.getLastRow() - 1, 1).getValues();
   var months = {};
   dates.forEach(function(row) {
     var d = new Date(row[0]);

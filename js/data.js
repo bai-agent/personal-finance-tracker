@@ -43,10 +43,10 @@ class DataManager {
     }
   }
 
-  // Fetch ledger for specific month
-  async fetchLedger(month, accounts) {
+  // Fetch transactions for specific month
+  async fetchTransactions(month, accounts) {
     const url = CONFIG.GAS_WEBAPP.URL;
-    let params = '?action=ledger_all';
+    let params = '?action=transactions_all';
     if (month) params += '&month=' + month;
     if (accounts && accounts.length) params += '&accounts=' + accounts.join(',');
 
@@ -101,9 +101,9 @@ class DataManager {
     });
   }
 
-  // Get ledger entries (last 7 days by default)
-  getLedger() {
-    return (this.cache.ledger || []).map(e => {
+  // Get transactions (last 7 days by default)
+  getTransactions() {
+    return (this.cache.transactions || []).map(e => {
       const cur = e['Currency'] || this.getAccountCurrency(e['Account']);
       return {
         date: e['Date'] ? new Date(e['Date']) : null,
@@ -122,6 +122,12 @@ class DataManager {
         notes: e['Notes'] || ''
       };
     }).sort((a, b) => (b.date || 0) - (a.date || 0));
+  }
+
+  getDashboardMetric(name) {
+    const d = this.cache.dashboard || [];
+    const m = d.find(x => x['Metric'] === name);
+    return m ? (parseFloat(m['Value']) || 0) : 0;
   }
 
   getAccountCurrency(accountName) {
@@ -149,7 +155,7 @@ class DataManager {
         'User': a.user, 'Purpose': a.purpose, 'Current Balance': 0,
         'Previous Balance': 0, 'Currency': a.currency
       })),
-      ledger: [],
+      transactions: [],
       wages: [], bills: [], savings: [], history: [], dashboard: []
     };
   }

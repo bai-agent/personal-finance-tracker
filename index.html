@@ -10,6 +10,7 @@
 <link rel="manifest" href="manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
+/* ===== TOKENS ===== */
 :root {
   --bg: #0c1222;
   --card: #151d30;
@@ -31,6 +32,8 @@ body{
   background:var(--bg);color:var(--text);
   min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
+
+/* ===== HEADER ===== */
 .hdr{
   position:sticky;top:0;z-index:100;
   background:rgba(12,18,34,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
@@ -50,6 +53,8 @@ body{
   cursor:pointer;font-size:1.1rem;border:none}
 .btn-ref:active{opacity:.7}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== NAV ===== */
 .nav{max-width:540px;margin:0 auto;padding:10px 20px 4px}
 .nav select{
   width:100%;padding:12px 40px 12px 16px;
@@ -58,20 +63,28 @@ body{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath fill='%237e90b5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 14px center;
 }
+
+/* ===== MAIN ===== */
 .main{max-width:540px;margin:0 auto;padding:0 20px 90px}
 .pg{display:none}
 .pg.on{display:block}
+
+/* ===== HERO ===== */
 .hero{text-align:center;padding:24px 0 18px}
 .hero-lbl{font-size:.7rem;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px}
 .hero-amt{font-size:2.2rem;font-weight:800;letter-spacing:-1px}
 .hero-amt.pos{color:var(--green)}.hero-amt.neg{color:var(--red)}
 .hero-sub{font-size:.72rem;color:var(--dim);margin-top:5px}
+
+/* ===== STAT ROW ===== */
 .stats{display:flex;gap:8px;margin-bottom:14px}
 .stat{flex:1;text-align:center;padding:12px 8px;border-radius:12px}
 .stat.g{background:rgba(52,211,153,.08)}.stat.r{background:rgba(248,113,113,.08)}.stat.b{background:rgba(79,140,255,.08)}
 .stat-lbl{font-size:.62rem;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 .stat-val{font-size:1rem;font-weight:700}
 .stat.g .stat-val{color:var(--green)}.stat.r .stat-val{color:var(--red)}.stat.b .stat-val{color:var(--blue)}
+
+/* ===== PEOPLE ===== */
 .ppl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .pcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
 .pcard.wide{grid-column:1/-1;margin-bottom:6px}
@@ -81,11 +94,15 @@ body{
 .prow span:first-child{color:var(--sub)}
 .prow span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
 .pcard.wide .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+
+/* ===== PANEL (card wrapper) ===== */
 .pnl{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
 .pnl-hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
 .pnl-hd h3{font-size:.88rem;font-weight:600}
-.pnl-bd{}
+.pnl-bd{/* transactions handle own padding */}
 .btn-t{background:none;border:none;color:var(--blue);font-size:.78rem;font-weight:600;cursor:pointer}
+
+/* ===== ACCOUNT CARDS ===== */
 .agrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:8px}
 @media(max-width:380px){.agrid{grid-template-columns:1fr}}
 .acard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
@@ -97,6 +114,8 @@ body{
 .acard .native{font-size:.6rem;color:var(--dim);margin-top:2px}
 .acard .chg{font-size:.64rem;margin-top:4px;font-weight:500}
 .acard .chg.pos{color:var(--green)}.acard .chg.neg{color:var(--red)}
+
+/* ===== STATEMENTS FILTER ===== */
 .sf-wrap{position:relative;margin:12px 18px 0}
 .sf-btn{
   width:100%;display:flex;justify-content:space-between;align-items:center;
@@ -106,12 +125,14 @@ body{
 .sf-btn:active{border-color:var(--blue)}
 .sf-chev{color:var(--dim);transition:transform .2s}
 .sf-btn.open .sf-chev{transform:rotate(180deg)}
+
 .sf-panel{
   display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:300;
   background:var(--card2);border:1px solid var(--border);border-radius:14px;
   box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:65vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 .sf-panel.open{display:block}
+
 .sf-item{
   display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;
   border-bottom:1px solid rgba(30,45,74,.4);user-select:none;-webkit-user-select:none;
@@ -123,11 +144,14 @@ body{
 .sf-name{font-size:.82rem;font-weight:500}
 .sf-sub{font-size:.66rem;color:var(--dim);margin-top:1px}
 .sf-badge{font-size:.6rem;font-weight:700;background:var(--border);color:var(--sub);padding:2px 7px;border-radius:5px}
+
 .sf-actions{
   display:flex;align-items:center;justify-content:flex-end;gap:12px;
   padding:10px 18px;border-top:1px solid var(--border);background:var(--card);position:sticky;bottom:0;
 }
 .btn-f{background:var(--blue);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer}
+
+/* ===== PERIOD ROW ===== */
 .periods{display:flex;gap:6px;padding:12px 18px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border)}
 .pbtn{
   padding:8px 14px;border-radius:8px;background:var(--bg);color:var(--sub);
@@ -144,8 +168,12 @@ body{
 }
 .pmon.on{background:var(--blue);color:#fff;border-color:var(--blue);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='white' d='M5 7L0 2h10z'/%3E%3C/svg%3E")}
+
+/* ===== STMT SUMMARY ===== */
 .ss{display:flex;gap:14px;padding:10px 18px;font-size:.76rem;color:var(--sub);border-bottom:1px solid var(--border)}
 .ss b.pos{color:var(--green)}.ss b.neg{color:var(--red)}
+
+/* ===== TRANSACTIONS ===== */
 .tx{display:flex;justify-content:space-between;align-items:flex-start;padding:13px 18px;gap:10px;border-bottom:1px solid rgba(30,45,74,.35)}
 .tx:last-child{border:none}
 .tx-l{flex:1;min-width:0}
@@ -156,6 +184,8 @@ body{
 .tx-a.pos{color:var(--green)}.tx-a.neg{color:var(--red)}
 .tx-n{font-size:.58rem;color:var(--dim);margin-top:1px}
 .tx-b{font-size:.58rem;color:var(--sub);margin-top:2px}
+
+/* ===== GOALS ===== */
 .goal{padding:14px 18px;border-bottom:1px solid rgba(30,45,74,.35)}
 .goal:last-child{border:none}
 .goal-top{display:flex;justify-content:space-between;margin-bottom:8px}
@@ -165,13 +195,23 @@ body{
 .pbar{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:6px}
 .pfill{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:3px;transition:width .5s}
 .goal-am{font-size:.72rem;color:var(--sub)}
+
+/* ===== CHART ===== */
 .chart-w{padding:14px}
 .chart-w canvas{width:100%!important;max-height:200px}
+
+/* ===== EMPTY ===== */
 .empty{text-align:center;color:var(--dim);padding:32px 16px;font-size:.84rem}
+
+/* ===== BILL STATUS ===== */
 .bst{font-size:.58rem;font-weight:700;margin-top:2px}
 .bst.od{color:var(--red)}.bst.ds{color:#fbbf24}
+
+/* ===== BACKDROP ===== */
 .bkdp{display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.45)}
 .bkdp.open{display:block}
+
+/* ===== FOOTER ===== */
 .ftr{position:fixed;bottom:0;left:0;right:0;z-index:100;
   background:var(--card);border-top:1px solid var(--border);
   text-align:center;padding:10px 20px;font-size:.66rem;color:var(--dim)}
@@ -179,6 +219,7 @@ body{
 </head>
 <body>
 
+<!-- HEADER -->
 <header class="hdr"><div class="hdr-inner">
   <div class="hdr-title">💰 B&K Finances</div>
   <div class="hdr-right">
@@ -187,6 +228,7 @@ body{
   </div>
 </div></header>
 
+<!-- NAV -->
 <nav class="nav"><select id="nav">
   <option value="overview">📊  Overview</option>
   <option value="accounts">🏦  Accounts</option>
@@ -197,7 +239,10 @@ body{
   <option value="insights">💡  Insights</option>
 </select></nav>
 
+<!-- CONTENT -->
 <div class="main">
+
+  <!-- OVERVIEW -->
   <div id="overview" class="pg on">
     <div class="hero">
       <div class="hero-lbl">Total Balance</div>
@@ -214,13 +259,15 @@ body{
       <div class="pcard"><h4>👤 Katie</h4><div class="prow"><span>Wages</span><span id="kW">$0</span></div><div class="prow"><span>Spending</span><span id="kS">$0</span></div></div>
     </div>
     <div class="pcard wide"><h4>🤝 Joint</h4><div class="pgrid"><div class="prow"><span>Bills</span><span id="jB">$0</span></div><div class="prow"><span>Savings</span><span id="jSv">$0</span></div><div class="prow"><span>Food</span><span id="jF">$0</span></div><div class="prow"><span>Credit</span><span id="jC">$0</span></div></div></div>
-    <div class="pnl"><div class="pnl-hd"><h3>Recent Transactions</h3><button class="btn-t" id="viewAll">View all</button></div><div class="pnl-bd" id="recTxns"><div class="empty">No transactions yet — upload a statement to #finances</div></div></div>
+    <div class="pnl"><div class="pnl-hd"><h3>Recent Transactions</h3><button class="btn-t" id="viewAll">View all</button></div><div class="pnl-bd" id="recTxns"><div class="empty">Loading…</div></div></div>
   </div>
 
+  <!-- ACCOUNTS -->
   <div id="accounts" class="pg">
     <div class="agrid" id="aCards"></div>
   </div>
 
+  <!-- STATEMENTS -->
   <div id="statements" class="pg">
     <div class="pnl">
       <div class="pnl-hd"><h3>Statements</h3></div>
@@ -238,381 +285,259 @@ body{
         <select class="pmon" id="sMon"><option value="">Month…</option></select>
       </div>
       <div class="ss" id="stmtSum"></div>
-      <div class="pnl-bd" id="stmtList"><div class="empty">No transactions yet</div></div>
+      <div class="pnl-bd" id="stmtList"><div class="empty">Loading…</div></div>
     </div>
     <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w"><canvas id="balChart"></canvas></div></div>
   </div>
 
-  <div id="wages" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💵 Wage History</h3></div><div class="pnl-bd" id="wContent"><div class="empty">No wage data yet</div></div></div></div>
-  <div id="bills" class="pg"><div class="pnl"><div class="pnl-hd"><h3>📋 Recurring Bills</h3></div><div class="pnl-bd" id="biContent"><div class="empty">No bills detected yet</div></div></div></div>
-  <div id="savings" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💎 Savings Goals</h3></div><div class="pnl-bd" id="svContent"><div class="empty">No goals set up</div></div></div></div>
+  <!-- WAGES -->
+  <div id="wages" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💵 Wage History</h3></div><div class="pnl-bd" id="wContent"><div class="empty">Loading…</div></div></div></div>
+
+  <!-- BILLS -->
+  <div id="bills" class="pg"><div class="pnl"><div class="pnl-hd"><h3>📋 Recurring Bills</h3></div><div class="pnl-bd" id="biContent"><div class="empty">Loading…</div></div></div></div>
+
+  <!-- SAVINGS -->
+  <div id="savings" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💎 Savings Goals</h3></div><div class="pnl-bd" id="svContent"><div class="empty">Loading…</div></div></div></div>
+
+  <!-- INSIGHTS -->
   <div id="insights" class="pg"><div class="pnl"><div class="pnl-hd"><h3>🤖 BAI Insights</h3></div><div class="pnl-bd"><div class="empty">Upload statements to #finances to get insights</div></div></div></div>
+
 </div>
 
+<!-- FOOTER -->
 <footer class="ftr"><span id="fSrc">—</span> · <span id="fRate">£1 = $—</span> · BAI 🤖</footer>
+
+<!-- BACKDROP -->
 <div class="bkdp" id="bkdp"></div>
 
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
 <script>
-/* ===== CONFIG (inline) ===== */
-var CONFIG = {
-  GAS_URL: 'https://script.google.com/macros/s/AKfycbyNhnB9By57QvqkRpcSelScDOH1gYeMRVWwgXIA6eLFTUvuWWUaZvg9mSMAuHf1sAPh1Q/exec',
-  ACCOUNTS: [
-    { id:'bw_cba', name:'BW Personal (Commonwealth)', bank:'CBA', user:'Bailey', purpose:'Wages', currency:'AUD', icon:'🏛️', type:'checking' },
-    { id:'katie_cba', name:'Katie Personal (Commonwealth)', bank:'CBA', user:'Katie', purpose:'Wages', currency:'AUD', icon:'🏛️', type:'checking' },
-    { id:'joint_cba', name:'Joint (Commonwealth)', bank:'CBA', user:'Joint', purpose:'Bills', currency:'AUD', icon:'🏛️', type:'checking' },
-    { id:'saver_cba', name:'Joint Saver (Commonwealth)', bank:'CBA', user:'Joint', purpose:'Savings', currency:'AUD', icon:'🏛️', type:'savings' },
-    { id:'bw_starling', name:'BW Personal (Starling)', bank:'Starling', user:'Bailey', purpose:'Spending', currency:'GBP', icon:'⭐', type:'checking' },
-    { id:'katie_starling', name:'Katie Personal (Starling)', bank:'Starling', user:'Katie', purpose:'Spending', currency:'GBP', icon:'⭐', type:'checking' },
-    { id:'joint_starling', name:'Joint (Starling)', bank:'Starling', user:'Joint', purpose:'Food', currency:'GBP', icon:'⭐', type:'checking' },
-    { id:'cc_capone', name:'Credit Card (Capital One)', bank:'Capital One', user:'Joint', purpose:'Credit', currency:'GBP', icon:'💳', type:'credit' }
-  ]
-};
-
-/* ===== DATA MANAGER (inline) ===== */
-var DM = {
-  cache: {},
-  exchangeRate: { gbpToAud: 1.95, audToGbp: 0.513 },
-  displayCurrency: 'AUD',
-  dataSource: 'loading',
-
-  async fetchAll() {
-    try {
-      var resp = await fetch(CONFIG.GAS_URL + '?action=all');
-      var raw = await resp.json();
-      if (raw.error) throw new Error(raw.error);
-      this.cache = raw;
-      this.dataSource = 'live';
-      if (raw.exchangeRate) this.exchangeRate = raw.exchangeRate;
-      return true;
-    } catch (e) {
-      console.error('Fetch failed:', e);
-      this.dataSource = 'error';
-      if (!this.cache.accounts) {
-        this.cache = {
-          accounts: CONFIG.ACCOUNTS.map(function(a){return{'Account Name':a.name,'Type':a.type,'Bank':a.bank,'User':a.user,'Purpose':a.purpose,'Current Balance':0,'Previous Balance':0,'Currency':a.currency}}),
-          ledger:[],wages:[],bills:[],savings:[],history:[],dashboard:[]
-        };
-      }
-      return false;
-    }
-  },
-
-  async fetchLedger(month, accounts) {
-    try {
-      var params = '?action=ledger_all';
-      if (month) params += '&month=' + month;
-      if (accounts && accounts.length) params += '&accounts=' + encodeURIComponent(accounts.join(','));
-      var resp = await fetch(CONFIG.GAS_URL + params);
-      var raw = await resp.json();
-      return raw.data || [];
-    } catch (e) { return []; }
-  },
-
-  convert: function(amount, from, to) {
-    if (!to) to = this.displayCurrency;
-    if (from === to) return amount;
-    if (from === 'GBP' && to === 'AUD') return amount * (this.exchangeRate.gbpToAud || 1.95);
-    if (from === 'AUD' && to === 'GBP') return amount * (this.exchangeRate.audToGbp || 0.513);
-    return amount;
-  },
-
-  fmt: function(amount, currency) {
-    if (!currency) currency = this.displayCurrency;
-    var sym = currency === 'GBP' ? '£' : '$';
-    var abs = Math.abs(amount);
-    var s = sym + abs.toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2});
-    return amount < 0 ? '-' + s : s;
-  },
-
-  getCurrency: function(name) {
-    if (!name) return 'AUD';
-    var c = CONFIG.ACCOUNTS.find(function(a){return a.name === name});
-    return c ? c.currency : 'AUD';
-  },
-
-  getAccounts: function() {
-    return (this.cache.accounts || []).map(function(a){
-      var cur = DM.getCurrency(a['Account Name']);
-      var bal = parseFloat(a['Current Balance']) || 0;
-      var prev = parseFloat(a['Previous Balance']) || 0;
-      return {
-        name: a['Account Name'], type: a['Type'], bank: a['Bank'],
-        user: a['User'], purpose: a['Purpose'],
-        nativeBalance: bal, nativeCurrency: cur,
-        balance: DM.convert(bal, cur),
-        change: DM.convert(bal - prev, cur)
-      };
-    });
-  },
-
-  getLedger: function() {
-    return (this.cache.ledger || []).map(function(e){
-      var cur = e['Currency'] || DM.getCurrency(e['Account']);
-      return {
-        date: e['Date'] ? new Date(e['Date']) : null,
-        description: e['Description'] || '',
-        amount: parseFloat(e['Amount']) || 0,
-        balanceAfter: parseFloat(e['Balance After']) || 0,
-        category: e['Category'] || '',
-        account: e['Account'] || '',
-        currency: cur,
-        convertedAmount: DM.convert(parseFloat(e['Amount']) || 0, cur),
-        convertedBalance: DM.convert(parseFloat(e['Balance After']) || 0, cur)
-      };
-    }).sort(function(a,b){return (b.date||0) - (a.date||0)});
-  },
-
-  getDashboardMetric: function(name) {
-    var d = this.cache.dashboard || [];
-    var m = d.find(function(x){return x['Metric'] === name});
-    return m ? (parseFloat(m['Value']) || 0) : 0;
-  }
-};
-
-/* ===== APP (inline) ===== */
 (function(){
   'use strict';
-  var sa = CONFIG.ACCOUNTS.map(function(a){return a.name}), sDays=7, sMonth='', sfOpen=false, tab='overview';
+  var sa = CONFIG.ACCOUNTS.map(a=>a.name), sDays=7, sMonth='', sfOpen=false, tab='overview';
+  var dm = dataManager;
 
-  document.addEventListener('DOMContentLoaded', async function(){
+  document.addEventListener('DOMContentLoaded', async()=>{
     wireNav(); wireCur(); wireRef();
-    document.getElementById('viewAll').onclick = function(){go('statements')};
+    document.getElementById('viewAll').onclick=()=>go('statements');
     buildFilter(); wirePeriods(); wireMonth();
-    await DM.fetchAll();
+    await dm.fetchAll();
     renderAll();
   });
 
-  function renderAll(){
-    try { renderOverview(); } catch(e){ console.error('Overview error:', e); }
-    try { renderAccts(); } catch(e){ console.error('Accounts error:', e); }
-    try { popMonths(); } catch(e){ console.error('Months error:', e); }
-    try { renderFtr(); } catch(e){ console.error('Footer error:', e); }
-  }
+  function renderAll(){renderOverview();renderAccts();popMonths();renderFtr()}
 
+  // NAV
   function wireNav(){
-    var n = document.getElementById('nav');
-    n.addEventListener('change', function(e){go(e.target.value)});
-    var h = location.hash.slice(1);
-    if (h && document.getElementById(h)){n.value = h; go(h)}
+    var n=document.getElementById('nav');
+    n.onchange=e=>go(e.target.value);
+    var h=location.hash.slice(1);
+    if(h&&document.getElementById(h)){n.value=h;go(h)}
   }
   function go(t){
-    tab = t;
-    document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on')});
-    var el = document.getElementById(t);
-    if (el) el.classList.add('on');
-    document.getElementById('nav').value = t;
-    history.replaceState(null, '', '#' + t);
-    if (t === 'statements') renderStmt();
-    if (t === 'wages') renderWages();
-    if (t === 'bills') renderBills();
-    if (t === 'savings') renderSavings();
+    tab=t;
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+    var el=document.getElementById(t);if(el)el.classList.add('on');
+    document.getElementById('nav').value=t;
+    history.replaceState(null,'','#'+t);
+    if(t==='statements')renderStmt();
+    if(t==='wages')renderWages();
+    if(t==='bills')renderBills();
+    if(t==='savings')renderSavings();
   }
 
+  // CURRENCY
   function wireCur(){
-    document.getElementById('curBtn').addEventListener('click', function(){
-      DM.displayCurrency = DM.displayCurrency === 'AUD' ? 'GBP' : 'AUD';
-      this.textContent = DM.displayCurrency === 'AUD' ? '$ AUD' : '£ GBP';
-      this.classList.toggle('gbp', DM.displayCurrency === 'GBP');
-      renderAll(); if (tab === 'statements') renderStmt();
-    });
+    var b=document.getElementById('curBtn');
+    b.onclick=()=>{
+      dm.displayCurrency=dm.displayCurrency==='AUD'?'GBP':'AUD';
+      b.textContent=dm.displayCurrency==='AUD'?'$ AUD':'£ GBP';
+      b.classList.toggle('gbp',dm.displayCurrency==='GBP');
+      renderAll();if(tab==='statements')renderStmt();
+    };
   }
 
+  // REFRESH
   function wireRef(){
-    var b = document.getElementById('refBtn');
-    b.addEventListener('click', async function(){
-      b.style.animation = 'spin .8s linear infinite';
-      await DM.fetchAll(); renderAll();
-      if (tab === 'statements') renderStmt();
-      b.style.animation = 'none';
-    });
+    var b=document.getElementById('refBtn');
+    b.onclick=async()=>{
+      b.style.animation='spin .8s linear infinite';
+      await dm.fetchAll();renderAll();
+      if(tab==='statements')renderStmt();
+      b.style.animation='none';
+    };
   }
 
+  // FILTER
   function buildFilter(){
-    var list = document.getElementById('sfList');
-    list.innerHTML = CONFIG.ACCOUNTS.map(function(a){
-      return '<label class="sf-item"><input type="checkbox" value="'+a.name+'" checked>'+
-        '<div class="sf-info"><div class="sf-name">'+a.icon+' '+a.name+'</div>'+
-        '<div class="sf-sub">'+a.user+' · '+a.purpose+'</div></div>'+
-        '<span class="sf-badge">'+a.currency+'</span></label>';
-    }).join('');
-    var btn=document.getElementById('sfBtn'), panel=document.getElementById('sfPanel'), bk=document.getElementById('bkdp');
-    btn.addEventListener('click', function(e){e.stopPropagation();sfOpen=!sfOpen;panel.classList.toggle('open',sfOpen);btn.classList.toggle('open',sfOpen);bk.classList.toggle('open',sfOpen)});
-    bk.addEventListener('click', closeF);
-    list.addEventListener('change', syncF);
-    document.getElementById('sfAll').addEventListener('click', function(){list.querySelectorAll('input').forEach(function(c){c.checked=true});syncF()});
-    document.getElementById('sfNone').addEventListener('click', function(){list.querySelectorAll('input').forEach(function(c){c.checked=false});syncF()});
-    document.getElementById('sfDone').addEventListener('click', function(){closeF();renderStmt()});
+    var list=document.getElementById('sfList');
+    list.innerHTML=CONFIG.ACCOUNTS.map(a=>
+      '<label class="sf-item"><input type="checkbox" value="'+a.name+'" checked>'+
+      '<div class="sf-info"><div class="sf-name">'+a.icon+' '+a.name+'</div>'+
+      '<div class="sf-sub">'+a.user+' · '+a.purpose+'</div></div>'+
+      '<span class="sf-badge">'+a.currency+'</span></label>'
+    ).join('');
+    var btn=document.getElementById('sfBtn'),panel=document.getElementById('sfPanel'),bk=document.getElementById('bkdp');
+    btn.onclick=e=>{e.stopPropagation();sfOpen=!sfOpen;panel.classList.toggle('open',sfOpen);btn.classList.toggle('open',sfOpen);bk.classList.toggle('open',sfOpen)};
+    bk.onclick=closeF;
+    list.onchange=syncF;
+    document.getElementById('sfAll').onclick=()=>{list.querySelectorAll('input').forEach(c=>c.checked=true);syncF()};
+    document.getElementById('sfNone').onclick=()=>{list.querySelectorAll('input').forEach(c=>c.checked=false);syncF()};
+    document.getElementById('sfDone').onclick=()=>{closeF();renderStmt()};
   }
   function closeF(){sfOpen=false;document.getElementById('sfPanel').classList.remove('open');document.getElementById('sfBtn').classList.remove('open');document.getElementById('bkdp').classList.remove('open')}
   function syncF(){
-    var ch = document.querySelectorAll('#sfList input:checked');
-    sa = [].slice.call(ch).map(function(c){return c.value});
-    var n = sa.length, t = CONFIG.ACCOUNTS.length;
-    document.getElementById('sfLbl').textContent = n===t ? '🏦 All Accounts' : n===0 ? '🏦 None' : '🏦 '+n+' Account'+(n>1?'s':'');
+    var ch=document.querySelectorAll('#sfList input:checked');sa=[...ch].map(c=>c.value);
+    var n=sa.length,t=CONFIG.ACCOUNTS.length;
+    document.getElementById('sfLbl').textContent=n===t?'🏦 All Accounts':n===0?'🏦 None':'🏦 '+n+' Account'+(n>1?'s':'');
   }
 
+  // PERIODS
   function wirePeriods(){
-    document.querySelectorAll('.pbtn').forEach(function(b){
-      b.addEventListener('click', function(){
-        document.querySelectorAll('.pbtn').forEach(function(x){x.classList.remove('on')});
+    document.querySelectorAll('.pbtn').forEach(b=>{
+      b.onclick=()=>{
+        document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('on'));
         b.classList.add('on');
-        document.getElementById('sMon').value=''; document.getElementById('sMon').classList.remove('on');
-        sDays = parseInt(b.dataset.d); sMonth=''; renderStmt();
-      });
+        document.getElementById('sMon').value='';document.getElementById('sMon').classList.remove('on');
+        sDays=parseInt(b.dataset.d);sMonth='';renderStmt();
+      };
     });
   }
   function wireMonth(){
-    document.getElementById('sMon').addEventListener('change', function(e){
-      if (e.target.value){
-        document.querySelectorAll('.pbtn').forEach(function(x){x.classList.remove('on')});
-        e.target.classList.add('on'); sMonth=e.target.value; sDays=0;
-      } else {
+    document.getElementById('sMon').onchange=e=>{
+      if(e.target.value){
+        document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('on'));
+        e.target.classList.add('on');sMonth=e.target.value;sDays=0;
+      }else{
         e.target.classList.remove('on');
         document.querySelector('.pbtn[data-d="7"]').classList.add('on');
-        sMonth=''; sDays=7;
+        sMonth='';sDays=7;
       }
       renderStmt();
-    });
+    };
   }
   function popMonths(){
-    var ldg = DM.getLedger(), ms = {};
-    ldg.forEach(function(e){if(e.date){var k=e.date.getFullYear()+'-'+String(e.date.getMonth()+1).padStart(2,'0');ms[k]=true}});
-    var sel = document.getElementById('sMon');
-    while(sel.options.length > 1) sel.remove(1);
-    Object.keys(ms).sort().reverse().forEach(function(m){
-      var o = document.createElement('option'); o.value = m;
-      var p = m.split('-'); o.textContent = new Date(p[0],p[1]-1).toLocaleString('en-AU',{month:'short',year:'numeric'});
+    var ldg=dm.getTransactions(),ms=new Set();
+    ldg.forEach(e=>{if(e.date)ms.add(e.date.getFullYear()+'-'+String(e.date.getMonth()+1).padStart(2,'0'))});
+    var sel=document.getElementById('sMon');while(sel.options.length>1)sel.remove(1);
+    [...ms].sort().reverse().forEach(m=>{
+      var o=document.createElement('option');o.value=m;
+      var p=m.split('-');o.textContent=new Date(p[0],p[1]-1).toLocaleString('en-AU',{month:'short',year:'numeric'});
       sel.appendChild(o);
     });
   }
 
+  // OVERVIEW
   function renderOverview(){
-    var a = DM.getAccounts(), l = DM.getLedger();
-    var tot = a.reduce(function(s,x){return s+x.balance}, 0);
-    var h = document.getElementById('totalBal');
-    h.textContent = DM.fmt(tot); h.className = 'hero-amt ' + (tot >= 0 ? 'pos' : 'neg');
-
-    // Use dashboard metrics if ledger is empty
-    var inc, exp, savRate;
-    if (l.length > 0) {
-      inc = l.filter(function(t){return t.amount>0}).reduce(function(s,t){return s+t.convertedAmount},0);
-      exp = Math.abs(l.filter(function(t){return t.amount<0}).reduce(function(s,t){return s+t.convertedAmount},0));
-      savRate = inc > 0 ? ((inc-exp)/inc*100).toFixed(0) : '--';
-    } else {
-      inc = DM.getDashboardMetric('Monthly Income');
-      exp = DM.getDashboardMetric('Monthly Expenses');
-      savRate = DM.getDashboardMetric('Savings Rate');
-      if (savRate > 0 && savRate < 1) savRate = (savRate * 100).toFixed(0);
-      else if (savRate === 0 && inc > 0) savRate = ((inc-exp)/inc*100).toFixed(0);
-      else savRate = '--';
-    }
-
-    document.getElementById('sInc').textContent = DM.fmt(inc);
-    document.getElementById('sExp').textContent = DM.fmt(exp);
-    document.getElementById('sSav').textContent = savRate + '%';
-
-    var b = function(n){var x=a.find(function(x){return x.name===n});return DM.fmt(x?x.balance:0)};
-    document.getElementById('bW').textContent = b('BW Personal (Commonwealth)');
-    document.getElementById('bS').textContent = b('BW Personal (Starling)');
-    document.getElementById('kW').textContent = b('Katie Personal (Commonwealth)');
-    document.getElementById('kS').textContent = b('Katie Personal (Starling)');
-    document.getElementById('jB').textContent = b('Joint (Commonwealth)');
-    document.getElementById('jSv').textContent = b('Joint Saver (Commonwealth)');
-    document.getElementById('jF').textContent = b('Joint (Starling)');
-    document.getElementById('jC').textContent = b('Credit Card (Capital One)');
-
-    var el = document.getElementById('recTxns');
-    el.innerHTML = l.length ? l.slice(0,20).map(function(t){return tx(t)}).join('') : '<div class="empty">No transactions yet — upload a statement to #finances</div>';
+    var a=dm.getAccounts(),l=dm.getTransactions();
+    var tot=a.reduce((s,x)=>s+x.balance,0);
+    var h=document.getElementById('totalBal');h.textContent=dm.formatCurrency(tot);h.className='hero-amt '+(tot>=0?'pos':'neg');
+    var inc,exp,savRate;
+    if(l.length>0){inc=l.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);exp=Math.abs(l.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));savRate=inc>0?((inc-exp)/inc*100).toFixed(0):'--';}
+    else{inc=dm.getDashboardMetric('Monthly Income');exp=dm.getDashboardMetric('Monthly Expenses');var sr=dm.getDashboardMetric('Savings Rate');savRate=sr>0&&sr<1?(sr*100).toFixed(0):inc>0?((inc-exp)/inc*100).toFixed(0):'--';}
+    document.getElementById('sInc').textContent=dm.formatCurrency(inc);
+    document.getElementById('sExp').textContent=dm.formatCurrency(exp);
+    document.getElementById('sSav').textContent=savRate+'%';
+    var b=n=>{var x=a.find(x=>x.name===n);return dm.formatCurrency(x?x.balance:0)};
+    document.getElementById('bW').textContent=b('BW Personal (Commonwealth)');
+    document.getElementById('bS').textContent=b('BW Personal (Starling)');
+    document.getElementById('kW').textContent=b('Katie Personal (Commonwealth)');
+    document.getElementById('kS').textContent=b('Katie Personal (Starling)');
+    document.getElementById('jB').textContent=b('Joint (Commonwealth)');
+    document.getElementById('jSv').textContent=b('Joint Saver (Commonwealth)');
+    document.getElementById('jF').textContent=b('Joint (Starling)');
+    document.getElementById('jC').textContent=b('Credit Card (Capital One)');
+    var el=document.getElementById('recTxns');
+    el.innerHTML=l.length?l.slice(0,20).map(t=>tx(t)).join(''):'<div class="empty">No transactions in the last 7 days</div>';
   }
 
+  // ACCOUNTS
   function renderAccts(){
-    var a = DM.getAccounts(), g = document.getElementById('aCards');
-    g.innerHTML = a.map(function(x){
-      var c = CONFIG.ACCOUNTS.find(function(c){return c.name===x.name}) || {};
-      var nv = x.nativeCurrency !== DM.displayCurrency ? '<div class="native">'+DM.fmt(x.nativeBalance,x.nativeCurrency)+' '+x.nativeCurrency+'</div>' : '';
+    var a=dm.getAccounts(),g=document.getElementById('aCards');
+    g.innerHTML=a.map(x=>{
+      var c=CONFIG.ACCOUNTS.find(c=>c.name===x.name)||{};
+      var nv=x.nativeCurrency!==dm.displayCurrency?'<div class="native">'+dm.formatCurrency(x.nativeBalance,x.nativeCurrency)+' '+x.nativeCurrency+'</div>':'';
       return '<div class="acard"><div class="icon">'+(c.icon||'💰')+'</div><div class="name">'+x.name.replace(/ \(.*\)/,'')+'</div>'+
         '<div class="purpose">'+x.purpose+' · '+x.nativeCurrency+'</div>'+
-        '<div class="bal '+(x.balance>=0?'pos':'neg')+'">'+DM.fmt(x.balance)+'</div>'+nv+
-        '<div class="chg '+(x.change>=0?'pos':'neg')+'">'+(x.change>=0?'↗':'↘')+' '+DM.fmt(Math.abs(x.change))+'</div></div>';
+        '<div class="bal '+(x.balance>=0?'pos':'neg')+'">'+dm.formatCurrency(x.balance)+'</div>'+nv+
+        '<div class="chg '+(x.change>=0?'pos':'neg')+'">'+(x.change>=0?'↗':'↘')+' '+dm.formatCurrency(Math.abs(x.change))+'</div></div>';
     }).join('');
   }
 
+  // STATEMENTS
   async function renderStmt(){
-    var el=document.getElementById('stmtList'), sm=document.getElementById('stmtSum');
+    var el=document.getElementById('stmtList'),sm=document.getElementById('stmtSum');
     el.innerHTML='<div class="empty">Loading…</div>';
     var data;
-    try {
-      if(sMonth){
-        var raw = await DM.fetchLedger(sMonth, sa.length<8?sa:null);
-        data = raw.map(function(e){return trRow(e)}).filter(function(t){return sa.indexOf(t.account)>=0}).sort(function(a,b){return(b.date||0)-(a.date||0)});
-      } else if(sDays>7){
-        var raw = await DM.fetchLedger(null, sa.length<8?sa:null);
-        var cut = new Date(); cut.setDate(cut.getDate()-sDays); cut.setHours(0,0,0,0);
-        data = raw.map(function(e){return trRow(e)}).filter(function(t){return t.date&&t.date>=cut&&sa.indexOf(t.account)>=0}).sort(function(a,b){return(b.date||0)-(a.date||0)});
-      } else {
-        data = DM.getLedger().filter(function(t){return sa.indexOf(t.account)>=0});
-      }
-    } catch(e) { data = []; }
-    var tIn = data.filter(function(t){return t.amount>0}).reduce(function(s,t){return s+t.convertedAmount},0);
-    var tOut = Math.abs(data.filter(function(t){return t.amount<0}).reduce(function(s,t){return s+t.convertedAmount},0));
-    sm.innerHTML = 'In: <b class="pos">'+DM.fmt(tIn)+'</b> &nbsp; Out: <b class="neg">'+DM.fmt(tOut)+'</b> &nbsp; '+data.length+' txns';
-    el.innerHTML = data.length ? data.map(function(t){return tx(t,true)}).join('') : '<div class="empty">No transactions found</div>';
+    if(sMonth){
+      var raw=await dm.fetchTransactions(sMonth,sa.length<8?sa:null);
+      data=raw.map(e=>trRow(e)).filter(t=>sa.includes(t.account)).sort((a,b)=>(b.date||0)-(a.date||0));
+    }else if(sDays>7){
+      var raw=await dm.fetchTransactions(null,sa.length<8?sa:null);
+      var cut=new Date();cut.setDate(cut.getDate()-sDays);cut.setHours(0,0,0,0);
+      data=raw.map(e=>trRow(e)).filter(t=>t.date&&t.date>=cut&&sa.includes(t.account)).sort((a,b)=>(b.date||0)-(a.date||0));
+    }else{
+      data=dm.getTransactions().filter(t=>sa.includes(t.account));
+    }
+    var tIn=data.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
+    var tOut=Math.abs(data.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
+    sm.innerHTML='In: <b class="pos">'+dm.formatCurrency(tIn)+'</b> &nbsp; Out: <b class="neg">'+dm.formatCurrency(tOut)+'</b> &nbsp; '+data.length+' txns';
+    el.innerHTML=data.length?data.map(t=>tx(t,true)).join(''):'<div class="empty">No transactions found</div>';
     renderChart(data);
   }
-
   function trRow(e){
-    var c = e['Currency'] || DM.getCurrency(e['Account']);
-    return {date:e['Date']?new Date(e['Date']):null, description:e['Description']||'', amount:parseFloat(e['Amount'])||0,
-      balanceAfter:parseFloat(e['Balance After'])||0, category:e['Category']||'', account:e['Account']||'', currency:c,
-      convertedAmount:DM.convert(parseFloat(e['Amount'])||0,c), convertedBalance:DM.convert(parseFloat(e['Balance After'])||0,c)};
+    var c=e['Currency']||dm.getAccountCurrency(e['Account']);
+    return{date:e['Date']?new Date(e['Date']):null,description:e['Description']||'',amount:parseFloat(e['Amount'])||0,
+      balanceAfter:parseFloat(e['Balance After'])||0,category:e['Category']||'',account:e['Account']||'',currency:c,
+      convertedAmount:dm.convert(parseFloat(e['Amount'])||0,c),convertedBalance:dm.convert(parseFloat(e['Balance After'])||0,c)};
   }
-
   function renderChart(data){
-    var cv = document.getElementById('balChart');
-    if (!cv || !window.Chart) return;
-    var s = data.slice().sort(function(a,b){return(a.date||0)-(b.date||0)});
-    if (!s.length) return;
-    if (cv._c) cv._c.destroy();
-    cv._c = new Chart(cv, {type:'line', data:{
-      labels:s.map(function(e){return e.date?e.date.toLocaleDateString('en-AU',{day:'numeric',month:'short'}):''}),
-      datasets:[{data:s.map(function(e){return e.convertedBalance}),borderColor:'#4f8cff',backgroundColor:'rgba(79,140,255,.06)',
+    var cv=document.getElementById('balChart');if(!cv||!window.Chart)return;
+    var s=[...data].sort((a,b)=>(a.date||0)-(b.date||0));if(!s.length)return;
+    if(cv._c)cv._c.destroy();
+    cv._c=new Chart(cv,{type:'line',data:{
+      labels:s.map(e=>e.date?e.date.toLocaleDateString('en-AU',{day:'numeric',month:'short'}):''),
+      datasets:[{data:s.map(e=>e.convertedBalance),borderColor:'#4f8cff',backgroundColor:'rgba(79,140,255,.06)',
         fill:true,tension:.35,pointRadius:0,borderWidth:2}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{x:{ticks:{maxTicksLimit:6,color:'#4d6080',font:{size:9}},grid:{display:false}},
-          y:{ticks:{color:'#4d6080',font:{size:9},callback:function(v){return DM.fmt(v)}},grid:{color:'rgba(30,45,74,.4)'}}}}
+          y:{ticks:{color:'#4d6080',font:{size:9},callback:v=>dm.formatCurrency(v)},grid:{color:'rgba(30,45,74,.4)'}}}}
     });
   }
 
+  // WAGES/BILLS/SAVINGS
   function renderWages(){
-    var w = DM.cache.wages||[], el = document.getElementById('wContent');
-    if (!w.length){el.innerHTML='<div class="empty">No wage data yet</div>';return}
-    el.innerHTML = w.map(function(e){var c=e['Currency']||'AUD',a=parseFloat(e['Amount'])||0,cv=DM.convert(a,c);
-      var n=c!==DM.displayCurrency?'<div class="tx-n">'+DM.fmt(a,c)+' '+c+'</div>':'';
-      return '<div class="tx"><div class="tx-l"><div class="tx-d">'+(e['User']||'')+'</div><div class="tx-m">'+fd(e['Date'])+' · '+(e['Day of Week']||'')+' · '+(e['Account']||'')+'</div></div><div class="tx-r"><div class="tx-a pos">'+DM.fmt(cv)+'</div>'+n+'</div></div>'}).join('');
+    var w=dm.cache.wages||[],el=document.getElementById('wContent');
+    if(!w.length){el.innerHTML='<div class="empty">No wage data yet</div>';return}
+    el.innerHTML=w.map(e=>{var c=e['Currency']||'AUD',a=parseFloat(e['Amount'])||0,cv=dm.convert(a,c);
+      var n=c!==dm.displayCurrency?'<div class="tx-n">'+dm.formatCurrency(a,c)+' '+c+'</div>':'';
+      return '<div class="tx"><div class="tx-l"><div class="tx-d">'+(e['User']||'')+'</div><div class="tx-m">'+fd(e['Date'])+' · '+(e['Day of Week']||'')+' · '+(e['Account']||'')+'</div></div><div class="tx-r"><div class="tx-a pos">'+dm.formatCurrency(cv)+'</div>'+n+'</div></div>'}).join('');
   }
   function renderBills(){
-    var b = DM.cache.bills||[], el = document.getElementById('biContent');
-    if (!b.length){el.innerHTML='<div class="empty">No bills detected yet</div>';return}
-    el.innerHTML = b.map(function(e){var c=e['Currency']||'AUD',a=Math.abs(parseFloat(e['Amount']))||0,st=e['Status']||'Active',sc=st==='Overdue'?'od':st==='Due Soon'?'ds':'';
-      return '<div class="tx"><div class="tx-l"><div class="tx-d">'+(e['Bill Name']||'')+'</div><div class="tx-m">'+(e['Frequency']||'Monthly')+' · Next: '+fd(e['Next Due Date'])+'</div></div><div class="tx-r"><div class="tx-a neg">'+DM.fmt(DM.convert(a,c))+'</div><div class="bst '+sc+'">'+st+'</div></div></div>'}).join('');
+    var b=dm.cache.bills||[],el=document.getElementById('biContent');
+    if(!b.length){el.innerHTML='<div class="empty">No bills detected yet</div>';return}
+    el.innerHTML=b.map(e=>{var c=e['Currency']||'AUD',a=Math.abs(parseFloat(e['Amount']))||0,st=e['Status']||'Active',sc=st==='Overdue'?'od':st==='Due Soon'?'ds':'';
+      return '<div class="tx"><div class="tx-l"><div class="tx-d">'+(e['Bill Name']||'')+'</div><div class="tx-m">'+(e['Frequency']||'Monthly')+' · Next: '+fd(e['Next Due Date'])+'</div></div><div class="tx-r"><div class="tx-a neg">'+dm.formatCurrency(dm.convert(a,c))+'</div><div class="bst '+sc+'">'+st+'</div></div></div>'}).join('');
   }
   function renderSavings(){
-    var g = DM.cache.savings||[], el = document.getElementById('svContent');
-    if (!g.length){el.innerHTML='<div class="empty">No goals set up</div>';return}
-    el.innerHTML = g.map(function(e){var tg=parseFloat(e['Target Amount'])||1,cu=parseFloat(e['Current Amount'])||0,pc=Math.min(100,cu/tg*100).toFixed(1);
-      return '<div class="goal"><div class="goal-top"><div><div class="goal-nm">'+(e['Goal Name']||'')+'</div><div class="goal-ds">'+(e['Description']||'')+'</div></div><div class="goal-pc">'+pc+'%</div></div><div class="pbar"><div class="pfill" style="width:'+pc+'%"></div></div><div class="goal-am">'+DM.fmt(cu)+' / '+DM.fmt(tg)+'</div></div>'}).join('');
+    var g=dm.cache.savings||[],el=document.getElementById('svContent');
+    if(!g.length){el.innerHTML='<div class="empty">No goals set up</div>';return}
+    el.innerHTML=g.map(e=>{var tg=parseFloat(e['Target Amount'])||1,cu=parseFloat(e['Current Amount'])||0,pc=Math.min(100,cu/tg*100).toFixed(1);
+      return '<div class="goal"><div class="goal-top"><div><div class="goal-nm">'+(e['Goal Name']||'')+'</div><div class="goal-ds">'+(e['Description']||'')+'</div></div><div class="goal-pc">'+pc+'%</div></div><div class="pbar"><div class="pfill" style="width:'+pc+'%"></div></div><div class="goal-am">'+dm.formatCurrency(cu)+' / '+dm.formatCurrency(tg)+'</div></div>'}).join('');
   }
 
-  function tx(t, sb){
-    var p = t.amount>0, a = DM.fmt(t.convertedAmount);
-    var n = t.currency!==DM.displayCurrency ? '<div class="tx-n">'+DM.fmt(t.amount,t.currency)+' '+t.currency+'</div>' : '';
-    var bl = sb ? '<div class="tx-b">Bal: '+DM.fmt(t.convertedBalance)+'</div>' : '';
+  // HELPERS
+  function tx(t,sb){
+    var p=t.amount>0,a=dm.formatCurrency(t.convertedAmount);
+    var n=t.currency!==dm.displayCurrency?'<div class="tx-n">'+dm.formatCurrency(t.amount,t.currency)+' '+t.currency+'</div>':'';
+    var bl=sb?'<div class="tx-b">Bal: '+dm.formatCurrency(t.convertedBalance)+'</div>':'';
     return '<div class="tx"><div class="tx-l"><div class="tx-d">'+t.description+'</div><div class="tx-m">'+fd(t.date)+' · '+(t.account||'').replace(/ \(.*\)/,'')+' · '+t.category+'</div></div><div class="tx-r"><div class="tx-a '+(p?'pos':'neg')+'">'+(p?'+':'')+a+'</div>'+n+bl+'</div></div>';
   }
   function fd(d){if(!d)return'';var dt=new Date(d);return isNaN(dt)?'':dt.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'2-digit'})}
   function renderFtr(){
-    document.getElementById('fSrc').textContent = DM.dataSource==='live' ? '🟢 Live' : DM.dataSource==='error' ? '🔴 Offline' : '🟡 Demo';
-    document.getElementById('fRate').textContent = '£1 = $'+(DM.exchangeRate.gbpToAud||1.95).toFixed(2);
+    document.getElementById('fSrc').textContent=dm.dataSource==='live'?'🟢 Live':'🟡 Demo';
+    document.getElementById('fRate').textContent='£1 = $'+(dm.exchangeRate.gbpToAud||1.95).toFixed(2);
   }
 })();
 </script>
