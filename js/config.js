@@ -2,7 +2,7 @@
 const CONFIG = {
   // Google Sheets API configuration
   GOOGLE_SHEETS: {
-    SPREADSHEET_ID: '1KIzq9VaJWqyFSIUk8J0GB43Yp1sYVY86K3M30_q73xc', // Bailey & Katie Finance Tracker
+    SPREADSHEET_ID: '1jIDRs9Vbm97RYbSf40jsTth6J8-WKcBgccX5EvpMTZ4', // Bailey & Katie Finance Tracker
     API_KEY: 'YOUR_API_KEY_HERE', // To be updated during setup
     SHEETS: {
       TRANSACTIONS: 'Transactions',

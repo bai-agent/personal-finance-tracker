@@ -562,7 +562,7 @@ function updateGoalProgress() {
 
 function doGet(e) {
   try {
-    var ss = SpreadsheetApp.openById('1KIzq9VaJWqyFSIUk8J0GB43Yp1sYVY86K3M30_q73xc');
+    var ss = SpreadsheetApp.openById('1jIDRs9Vbm97RYbSf40jsTth6J8-WKcBgccX5EvpMTZ4');
     var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'all';
     var result;
     
