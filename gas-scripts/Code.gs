@@ -1,603 +1,168 @@
 /**
  * Google Apps Script - Main Controller
  * Personal Finance Tracker for Bailey & Katie
- * 8 Accounts: CBA (4), Starling (3), Capital One (1)
+ * 8 Accounts: CBA (4 - AUD), Starling (3 - GBP), Capital One (1 - GBP)
  */
 
-const CONFIG = {
-  SPREADSHEET_ID: SpreadsheetApp.getActiveSpreadsheet().getId(),
-  
-  SHEETS: {
-    TRANSACTIONS: 'Transactions',
-    ACCOUNTS: 'Accounts',
-    WAGES: 'Wages',
-    BILLS: 'Recurring Bills',
-    SAVINGS: 'Savings & Goals',
-    PROJECTIONS: 'Projections',
-    HISTORY: 'Monthly History',
-    DASHBOARD: 'Dashboard'
-  },
-  
-  ACCOUNTS: [
-    { name: 'BW Personal (Commonwealth)', type: 'Checking', bank: 'CBA', user: 'Bailey', purpose: 'Wages' },
-    { name: 'Katie Personal (Commonwealth)', type: 'Checking', bank: 'CBA', user: 'Katie', purpose: 'Wages' },
-    { name: 'Joint (Commonwealth)', type: 'Checking', bank: 'CBA', user: 'Joint', purpose: 'Recurring Bills' },
-    { name: 'Joint Saver (Commonwealth)', type: 'Savings', bank: 'CBA', user: 'Joint', purpose: 'Savings' },
-    { name: 'BW Personal (Starling)', type: 'Checking', bank: 'Starling', user: 'Bailey', purpose: 'Spending' },
-    { name: 'Katie Personal (Starling)', type: 'Checking', bank: 'Starling', user: 'Katie', purpose: 'Spending' },
-    { name: 'Joint (Starling)', type: 'Checking', bank: 'Starling', user: 'Joint', purpose: 'Food & Spending' },
-    { name: 'Credit Card (Capital One)', type: 'Credit', bank: 'Capital One', user: 'Joint', purpose: 'Credit' }
-  ]
+var SHEET_ID = '1jIDRs9Vbm97RYbSf40jsTth6J8-WKcBgccX5EvpMTZ4';
+
+var TABS = {
+  LEDGER: 'Ledger',
+  ACCOUNTS: 'Accounts',
+  WAGES: 'Wages',
+  BILLS: 'Recurring Bills',
+  SAVINGS: 'Savings & Goals',
+  PROJECTIONS: 'Projections',
+  HISTORY: 'Monthly History',
+  DASHBOARD: 'Dashboard',
+  EXCHANGE: 'Exchange Rates'
 };
 
-// ==================== INITIALIZATION ====================
-
-function initializeSpreadsheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
-  // Create Transactions tab
-  createSheet(ss, CONFIG.SHEETS.TRANSACTIONS, [
-    'Date', 'Description', 'Amount', 'Category', 'Account', 'Bank', 'User', 'Type', 'ID', 'Notes'
-  ]);
-  
-  // Create Accounts tab
-  const accountsSheet = createSheet(ss, CONFIG.SHEETS.ACCOUNTS, [
-    'Account Name', 'Type', 'Bank', 'User', 'Purpose', 'Current Balance', 'Previous Balance', 'Change', 'Last Updated'
-  ]);
-  if (accountsSheet.getLastRow() <= 1) {
-    const rows = CONFIG.ACCOUNTS.map(a => [a.name, a.type, a.bank, a.user, a.purpose, 0, 0, 0, new Date()]);
-    accountsSheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
-  }
-  
-  // Create Wages tab
-  createSheet(ss, CONFIG.SHEETS.WAGES, [
-    'Date', 'Day of Week', 'User', 'Amount', 'Account', 'Notes'
-  ]);
-  
-  // Create Recurring Bills tab
-  createSheet(ss, CONFIG.SHEETS.BILLS, [
-    'Bill Name', 'Amount', 'Frequency', 'Category', 'Account', 'Last Paid Date', 'Next Due Date', 'Status', 'Notes'
-  ]);
-  
-  // Create Savings & Goals tab
-  createSheet(ss, CONFIG.SHEETS.SAVINGS, [
-    'Goal Name', 'Description', 'Target Amount', 'Current Amount', 'Monthly Contribution', 'Target Date', 'Priority', 'Progress %'
-  ]);
-  
-  // Create Projections tab
-  createSheet(ss, CONFIG.SHEETS.PROJECTIONS, [
-    'Month', 'Projected Income', 'Projected Bills', 'Projected Spending', 'Projected Savings', 'Net Position', 'Type'
-  ]);
-  
-  // Create Monthly History tab
-  createSheet(ss, CONFIG.SHEETS.HISTORY, [
-    'Month', 'Total Income', 'Bailey Income', 'Katie Income', 'Total Bills', 'Total Spending', 'Bailey Spending', 'Katie Spending', 'Joint Spending', 'Total Saved', 'Net Position', 'Type'
-  ]);
-  
-  // Create Dashboard tab
-  createSheet(ss, CONFIG.SHEETS.DASHBOARD, [
-    'Metric', 'Value', 'Change', 'Last Updated', 'Notes'
-  ]);
-  
-  // Remove default Sheet1 if other sheets exist
-  const defaultSheet = ss.getSheetByName('Sheet1');
-  if (defaultSheet && ss.getSheets().length > 1) {
-    ss.deleteSheet(defaultSheet);
-  }
-  
-  setupTriggers();
-  formatSheets(ss);
-  
-  return '✅ Spreadsheet initialized with all tabs';
-}
-
-function createSheet(ss, name, headers) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-  }
-  if (sheet.getLastRow() < 1 || sheet.getRange(1, 1).getValue() === '') {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold').setBackground('#f0f4f8');
-  }
-  return sheet;
-}
-
-function formatSheets(ss) {
-  // Currency formatting for Transactions
-  const txn = ss.getSheetByName(CONFIG.SHEETS.TRANSACTIONS);
-  if (txn) txn.getRange('C2:C1000').setNumberFormat('$#,##0.00');
-  
-  // Currency formatting for Accounts
-  const acc = ss.getSheetByName(CONFIG.SHEETS.ACCOUNTS);
-  if (acc) acc.getRange('F2:H100').setNumberFormat('$#,##0.00');
-  
-  // Currency formatting for Wages
-  const wages = ss.getSheetByName(CONFIG.SHEETS.WAGES);
-  if (wages) wages.getRange('D2:D1000').setNumberFormat('$#,##0.00');
-  
-  // Currency formatting for Bills
-  const bills = ss.getSheetByName(CONFIG.SHEETS.BILLS);
-  if (bills) bills.getRange('B2:B100').setNumberFormat('$#,##0.00');
-  
-  // Currency formatting for Savings
-  const savings = ss.getSheetByName(CONFIG.SHEETS.SAVINGS);
-  if (savings) {
-    savings.getRange('C2:E100').setNumberFormat('$#,##0.00');
-    savings.getRange('H2:H100').setNumberFormat('0.0%');
-  }
-  
-  // Currency formatting for History & Projections
-  const history = ss.getSheetByName(CONFIG.SHEETS.HISTORY);
-  if (history) history.getRange('B2:K100').setNumberFormat('$#,##0.00');
-  
-  const proj = ss.getSheetByName(CONFIG.SHEETS.PROJECTIONS);
-  if (proj) proj.getRange('B2:F100').setNumberFormat('$#,##0.00');
-}
-
-// ==================== TRIGGERS ====================
-
-function setupTriggers() {
-  // Remove existing triggers
-  ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
-  // onEdit is a simple trigger — it runs automatically, no need to install it.
-  // Only install the daily time-driven trigger.
-  ScriptApp.newTrigger('dailyProcessing').timeBased().everyDays(1).atHour(9).create();
-}
-
-// ==================== EDIT HANDLER ====================
-
-function onEdit(e) {
-  if (!e || !e.range) return;
-  const sheetName = e.source.getActiveSheet().getName();
-  
-  if (sheetName === CONFIG.SHEETS.TRANSACTIONS) {
-    processNewTransaction(e);
-  }
-  if (sheetName === CONFIG.SHEETS.ACCOUNTS) {
-    recalculateAccountChanges(e);
-  }
-  
-  updateDashboardMetrics();
-}
-
-function processNewTransaction(e) {
-  const sheet = e.source.getActiveSheet();
-  const row = e.range.getRow();
-  if (row <= 1) return;
-  
-  const data = sheet.getRange(row, 1, 1, 10).getValues()[0];
-  const [date, desc, amount, category, account, bank, user, type, id] = data;
-  
-  // Auto-categorize
-  if (!category && desc) {
-    sheet.getRange(row, 4).setValue(categorize(desc, amount));
-  }
-  // Auto-set type
-  if (!type && amount) {
-    sheet.getRange(row, 8).setValue(amount > 0 ? 'income' : 'expense');
-  }
-  // Auto-generate ID
-  if (!id) {
-    sheet.getRange(row, 9).setValue('txn_' + Date.now());
-  }
-  
-  // Detect wage deposits and auto-add to Wages tab
-  if (amount > 500 && (desc.toLowerCase().includes('salary') || desc.toLowerCase().includes('pay') || desc.toLowerCase().includes('wage'))) {
-    addWageEntry(date, user || 'Unknown', amount, account);
-  }
-  
-  // Detect potential recurring bills
-  detectRecurringBill(desc, amount, date, account);
-}
-
-function recalculateAccountChanges(e) {
-  const sheet = e.source.getActiveSheet();
-  const row = e.range.getRow();
-  if (row <= 1 || e.range.getColumn() !== 6) return; // Only trigger on balance column
-  
-  const current = sheet.getRange(row, 6).getValue();
-  const previous = sheet.getRange(row, 7).getValue() || 0;
-  sheet.getRange(row, 8).setValue(current - previous);
-  sheet.getRange(row, 9).setValue(new Date());
-}
-
-// ==================== WAGE TRACKING ====================
-
-function addWageEntry(date, user, amount, account) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.WAGES);
-  if (!sheet) return;
-  
-  const d = new Date(date);
-  const dayOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
-  
-  sheet.appendRow([d, dayOfWeek, user, amount, account, 'Auto-detected from transaction']);
-}
-
-function getWageAnalysis(user) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.WAGES);
-  if (!sheet || sheet.getLastRow() <= 1) return null;
-  
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues();
-  const userWages = data.filter(row => row[2] === user);
-  
-  if (userWages.length === 0) return null;
-  
-  const amounts = userWages.map(row => row[3]);
-  const avgWage = amounts.reduce((a, b) => a + b, 0) / amounts.length;
-  
-  // Find most common pay day
-  const days = userWages.map(row => row[1]);
-  const dayCount = {};
-  days.forEach(day => dayCount[day] = (dayCount[day] || 0) + 1);
-  const usualPayDay = Object.entries(dayCount).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
-  
-  // Calculate next expected pay (assuming fortnightly)
-  const lastPayDate = new Date(Math.max(...userWages.map(row => new Date(row[0]).getTime())));
-  const nextPay = new Date(lastPayDate.getTime() + 14 * 24 * 60 * 60 * 1000);
-  
-  return {
-    averageWage: avgWage,
-    usualPayDay,
-    nextExpectedPay: nextPay,
-    expectedAmount: avgWage,
-    totalEntries: userWages.length,
-    history: userWages
-  };
-}
-
-// ==================== BILL DETECTION & TRACKING ====================
-
-function detectRecurringBill(description, amount, date, account) {
-  if (amount >= 0) return; // Only expenses
-  
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const billsSheet = ss.getSheetByName(CONFIG.SHEETS.BILLS);
-  if (!billsSheet) return;
-  
-  // Check if this looks like a recurring bill
-  const billKeywords = ['rent', 'electricity', 'gas', 'water', 'internet', 'phone', 'insurance', 
-                        'netflix', 'spotify', 'gym', 'subscription', 'membership', 'direct debit'];
-  const desc = description.toLowerCase();
-  
-  if (!billKeywords.some(k => desc.includes(k))) return;
-  
-  // Check if bill already exists
-  const existingBills = billsSheet.getLastRow() > 1 
-    ? billsSheet.getRange(2, 1, billsSheet.getLastRow() - 1, 9).getValues() 
-    : [];
-  
-  const exists = existingBills.some(row => 
-    row[0].toLowerCase().includes(desc.substring(0, 8)) || 
-    desc.includes(row[0].toLowerCase().substring(0, 8))
-  );
-  
-  if (exists) {
-    // Update last paid date for existing bill
-    const matchIdx = existingBills.findIndex(row => 
-      row[0].toLowerCase().includes(desc.substring(0, 8)) || 
-      desc.includes(row[0].toLowerCase().substring(0, 8))
-    );
-    if (matchIdx >= 0) {
-      billsSheet.getRange(matchIdx + 2, 6).setValue(new Date(date)); // Last paid
-      // Estimate next due (monthly)
-      const nextDue = new Date(date);
-      nextDue.setMonth(nextDue.getMonth() + 1);
-      billsSheet.getRange(matchIdx + 2, 7).setValue(nextDue);
-      billsSheet.getRange(matchIdx + 2, 8).setValue('Paid');
-    }
-  } else {
-    // Add new recurring bill
-    const nextDue = new Date(date);
-    nextDue.setMonth(nextDue.getMonth() + 1);
-    const category = categorize(description, amount);
-    
-    billsSheet.appendRow([
-      description, Math.abs(amount), 'Monthly', category, account,
-      new Date(date), nextDue, 'Active', 'Auto-detected'
-    ]);
-  }
-}
-
-// ==================== MONTHLY HISTORY ====================
-
-function updateMonthlyHistory() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const txnSheet = ss.getSheetByName(CONFIG.SHEETS.TRANSACTIONS);
-  const historySheet = ss.getSheetByName(CONFIG.SHEETS.HISTORY);
-  if (!txnSheet || !historySheet || txnSheet.getLastRow() <= 1) return;
-  
-  const transactions = txnSheet.getRange(2, 1, txnSheet.getLastRow() - 1, 10).getValues();
-  
-  // Group by month
-  const monthly = {};
-  transactions.forEach(row => {
-    const date = new Date(row[0]);
-    if (isNaN(date.getTime())) return;
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    
-    if (!monthly[monthKey]) {
-      monthly[monthKey] = { 
-        totalIncome: 0, baileyIncome: 0, katieIncome: 0,
-        totalBills: 0, totalSpending: 0, 
-        baileySpending: 0, katieSpending: 0, jointSpending: 0,
-        totalSaved: 0
-      };
-    }
-    
-    const amount = row[2] || 0;
-    const user = row[6] || '';
-    const account = row[4] || '';
-    
-    if (amount > 0) {
-      monthly[monthKey].totalIncome += amount;
-      if (user === 'Bailey') monthly[monthKey].baileyIncome += amount;
-      if (user === 'Katie') monthly[monthKey].katieIncome += amount;
-    } else {
-      const absAmount = Math.abs(amount);
-      if (account.includes('Joint') && account.includes('Commonwealth') && !account.includes('Saver')) {
-        monthly[monthKey].totalBills += absAmount;
-      } else if (account.includes('Saver')) {
-        monthly[monthKey].totalSaved += absAmount;
-      } else {
-        monthly[monthKey].totalSpending += absAmount;
-        if (user === 'Bailey') monthly[monthKey].baileySpending += absAmount;
-        else if (user === 'Katie') monthly[monthKey].katieSpending += absAmount;
-        else monthly[monthKey].jointSpending += absAmount;
-      }
-    }
-  });
-  
-  // Write to history sheet
-  historySheet.getRange(2, 1, historySheet.getMaxRows() - 1, 12).clearContent();
-  
-  const sortedMonths = Object.keys(monthly).sort();
-  const historyData = sortedMonths.map(month => {
-    const m = monthly[month];
-    const net = m.totalIncome - m.totalBills - m.totalSpending;
-    return [
-      month, m.totalIncome, m.baileyIncome, m.katieIncome,
-      m.totalBills, m.totalSpending, m.baileySpending, m.katieSpending, m.jointSpending,
-      m.totalSaved, net, 'Actual'
-    ];
-  });
-  
-  if (historyData.length > 0) {
-    historySheet.getRange(2, 1, historyData.length, 12).setValues(historyData);
-  }
-  
-  // Add projections (next 3 months based on averages)
-  if (historyData.length >= 1) {
-    addProjections(ss, monthly, sortedMonths);
-  }
-}
-
-function addProjections(ss, monthly, sortedMonths) {
-  const projSheet = ss.getSheetByName(CONFIG.SHEETS.PROJECTIONS);
-  const historySheet = ss.getSheetByName(CONFIG.SHEETS.HISTORY);
-  if (!projSheet) return;
-  
-  // Calculate rolling averages from last 3 months
-  const recentMonths = sortedMonths.slice(-3);
-  const avg = { income: 0, bills: 0, spending: 0, saved: 0 };
-  
-  recentMonths.forEach(month => {
-    const m = monthly[month];
-    avg.income += m.totalIncome;
-    avg.bills += m.totalBills;
-    avg.spending += m.totalSpending;
-    avg.saved += m.totalSaved;
-  });
-  
-  const n = recentMonths.length;
-  avg.income /= n;
-  avg.bills /= n;
-  avg.spending /= n;
-  avg.saved /= n;
-  
-  // Generate projections for next 6 months
-  projSheet.getRange(2, 1, projSheet.getMaxRows() - 1, 7).clearContent();
-  
-  const lastMonth = sortedMonths[sortedMonths.length - 1];
-  const [lastYear, lastMonthNum] = lastMonth.split('-').map(Number);
-  
-  const projections = [];
-  for (let i = 1; i <= 6; i++) {
-    const projDate = new Date(lastYear, lastMonthNum - 1 + i, 1);
-    const monthKey = `${projDate.getFullYear()}-${String(projDate.getMonth() + 1).padStart(2, '0')}`;
-    const net = avg.income - avg.bills - avg.spending;
-    
-    projections.push([
-      monthKey, avg.income, avg.bills, avg.spending, avg.saved, net, 'Projected'
-    ]);
-  }
-  
-  if (projections.length > 0) {
-    projSheet.getRange(2, 1, projections.length, 7).setValues(projections);
-  }
-  
-  // Also append projections to history sheet
-  const historyLastRow = historySheet.getLastRow();
-  const projHistoryData = projections.map(p => [
-    p[0], p[1], p[1] * 0.5, p[1] * 0.5, // Split income 50/50 as estimate
-    p[2], p[3], p[3] * 0.3, p[3] * 0.3, p[3] * 0.4, // Split spending
-    p[4], p[5], 'Projected'
-  ]);
-  
-  if (projHistoryData.length > 0) {
-    historySheet.getRange(historyLastRow + 1, 1, projHistoryData.length, 12).setValues(projHistoryData);
-  }
-}
-
-// ==================== DASHBOARD METRICS ====================
-
-function updateDashboardMetrics() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const dashboard = ss.getSheetByName(CONFIG.SHEETS.DASHBOARD);
-  if (!dashboard) return;
-  
-  const accounts = getAccountBalances(ss);
-  const txnMetrics = getTransactionMetrics(ss);
-  const wageAnalysis = {
-    bailey: getWageAnalysis('Bailey'),
-    katie: getWageAnalysis('Katie')
-  };
-  
-  const netWorth = accounts.reduce((sum, a) => sum + a.balance, 0);
-  const savingsRate = txnMetrics.income > 0 ? (txnMetrics.income - txnMetrics.expenses) / txnMetrics.income : 0;
-  
-  const metrics = [
-    ['Net Worth', netWorth, '', new Date(), 'All accounts combined'],
-    ['Monthly Income', txnMetrics.income, '', new Date(), 'Last 30 days'],
-    ['Monthly Expenses', txnMetrics.expenses, '', new Date(), 'Last 30 days'],
-    ['Savings Rate', savingsRate, '', new Date(), 'Income - expenses / income'],
-    ['Bailey Avg Wage', wageAnalysis.bailey?.averageWage || 0, '', new Date(), wageAnalysis.bailey?.usualPayDay || 'Unknown'],
-    ['Katie Avg Wage', wageAnalysis.katie?.averageWage || 0, '', new Date(), wageAnalysis.katie?.usualPayDay || 'Unknown'],
-    ['Total Savings', accounts.filter(a => a.type === 'Savings').reduce((s, a) => s + a.balance, 0), '', new Date(), 'Joint Saver balance'],
-    ['Credit Balance', accounts.filter(a => a.type === 'Credit').reduce((s, a) => s + a.balance, 0), '', new Date(), 'Capital One']
-  ];
-  
-  dashboard.getRange(2, 1, dashboard.getMaxRows() - 1, 5).clearContent();
-  dashboard.getRange(2, 1, metrics.length, 5).setValues(metrics);
-}
-
-function getAccountBalances(ss) {
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.ACCOUNTS);
-  if (!sheet || sheet.getLastRow() <= 1) return [];
-  
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
-  return data.map(row => ({
-    name: row[0], type: row[1], bank: row[2], user: row[3],
-    purpose: row[4], balance: row[5] || 0
-  }));
-}
-
-function getTransactionMetrics(ss) {
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.TRANSACTIONS);
-  if (!sheet || sheet.getLastRow() <= 1) return { income: 0, expenses: 0 };
-  
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  
-  const recent = data.filter(row => row[0] && new Date(row[0]) >= thirtyDaysAgo);
-  
-  return {
-    income: recent.filter(r => r[2] > 0).reduce((s, r) => s + r[2], 0),
-    expenses: Math.abs(recent.filter(r => r[2] < 0).reduce((s, r) => s + r[2], 0))
-  };
-}
-
-// ==================== CATEGORIZATION ====================
-
-function categorize(description, amount) {
-  const desc = description.toLowerCase();
-  if (amount > 0) {
-    if (['salary', 'wage', 'pay', 'income'].some(k => desc.includes(k))) return 'Income';
-    return 'Income';
-  }
-  
-  const map = {
-    'Housing': ['rent', 'mortgage', 'property'],
-    'Utilities': ['electricity', 'gas', 'water', 'internet', 'phone', 'mobile'],
-    'Food & Dining': ['restaurant', 'cafe', 'takeaway', 'grocery', 'supermarket', 'woolworths', 'coles', 'aldi'],
-    'Transportation': ['fuel', 'petrol', 'uber', 'taxi', 'train', 'bus', 'parking', 'shell', 'bp'],
-    'Entertainment': ['cinema', 'movie', 'netflix', 'spotify', 'gym', 'disney'],
-    'Shopping': ['amazon', 'target', 'kmart', 'clothing', 'fashion'],
-    'Healthcare': ['doctor', 'medical', 'pharmacy', 'hospital', 'dental'],
-    'Insurance': ['insurance', 'cover', 'policy']
-  };
-  
-  for (const [cat, keywords] of Object.entries(map)) {
-    if (keywords.some(k => desc.includes(k))) return cat;
-  }
-  return 'Miscellaneous';
-}
-
-// ==================== DAILY PROCESSING ====================
-
-function dailyProcessing() {
-  updateMonthlyHistory();
-  updateDashboardMetrics();
-  checkUpcomingBills();
-  updateGoalProgress();
-}
-
-function checkUpcomingBills() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.BILLS);
-  if (!sheet || sheet.getLastRow() <= 1) return;
-  
-  const bills = sheet.getRange(2, 1, sheet.getLastRow() - 1, 9).getValues();
-  const now = new Date();
-  
-  bills.forEach((bill, idx) => {
-    const nextDue = new Date(bill[6]);
-    const daysUntil = (nextDue - now) / (1000 * 60 * 60 * 24);
-    
-    let status = 'Active';
-    if (daysUntil < 0) status = 'Overdue';
-    else if (daysUntil <= 3) status = 'Due Soon';
-    else if (daysUntil <= 7) status = 'Upcoming';
-    
-    sheet.getRange(idx + 2, 8).setValue(status);
-  });
-}
-
-function updateGoalProgress() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(CONFIG.SHEETS.SAVINGS);
-  if (!sheet || sheet.getLastRow() <= 1) return;
-  
-  const goals = sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues();
-  goals.forEach((goal, idx) => {
-    const target = goal[2] || 1;
-    const current = goal[3] || 0;
-    const progress = current / target;
-    sheet.getRange(idx + 2, 8).setValue(progress);
-  });
-}
+var ACCOUNTS_LIST = [
+  { name: 'BW Personal (Commonwealth)', type: 'Checking', bank: 'CBA', user: 'Bailey', purpose: 'Wages', currency: 'AUD' },
+  { name: 'Katie Personal (Commonwealth)', type: 'Checking', bank: 'CBA', user: 'Katie', purpose: 'Wages', currency: 'AUD' },
+  { name: 'Joint (Commonwealth)', type: 'Checking', bank: 'CBA', user: 'Joint', purpose: 'Recurring Bills', currency: 'AUD' },
+  { name: 'Joint Saver (Commonwealth)', type: 'Savings', bank: 'CBA', user: 'Joint', purpose: 'Savings', currency: 'AUD' },
+  { name: 'BW Personal (Starling)', type: 'Checking', bank: 'Starling', user: 'Bailey', purpose: 'Spending', currency: 'GBP' },
+  { name: 'Katie Personal (Starling)', type: 'Checking', bank: 'Starling', user: 'Katie', purpose: 'Spending', currency: 'GBP' },
+  { name: 'Joint (Starling)', type: 'Checking', bank: 'Starling', user: 'Joint', purpose: 'Food & Spending', currency: 'GBP' },
+  { name: 'Credit Card (Capital One)', type: 'Credit', bank: 'Capital One', user: 'Joint', purpose: 'Credit', currency: 'GBP' }
+];
 
 // ==================== WEB APP ENDPOINT ====================
 
 function doGet(e) {
   try {
-    var ss = SpreadsheetApp.openById('1jIDRs9Vbm97RYbSf40jsTth6J8-WKcBgccX5EvpMTZ4');
-    var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'all';
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var params = (e && e.parameter) ? e.parameter : {};
+    var action = params.action || 'all';
+    var days = parseInt(params.days) || 7;
+    var month = params.month || null;
+    var accounts = params.accounts ? params.accounts.split(',') : null;
     var result;
-    
-    if (action === 'all') {
-      result = {
-        accounts: getSheetDataById(ss, CONFIG.SHEETS.ACCOUNTS),
-        transactions: getSheetDataById(ss, CONFIG.SHEETS.TRANSACTIONS),
-        wages: getSheetDataById(ss, CONFIG.SHEETS.WAGES),
-        bills: getSheetDataById(ss, CONFIG.SHEETS.BILLS),
-        savings: getSheetDataById(ss, CONFIG.SHEETS.SAVINGS),
-        projections: getSheetDataById(ss, CONFIG.SHEETS.PROJECTIONS),
-        history: getSheetDataById(ss, CONFIG.SHEETS.HISTORY),
-        dashboard: getSheetDataById(ss, CONFIG.SHEETS.DASHBOARD),
-        timestamp: new Date().toISOString()
-      };
-    } else {
-      var sheetName = CONFIG.SHEETS[action.toUpperCase()] || action;
-      result = {
-        data: getSheetDataById(ss, sheetName),
-        timestamp: new Date().toISOString()
-      };
+
+    switch (action) {
+      case 'all':
+        result = getAllData(ss, days);
+        break;
+      case 'ledger':
+        result = getLedgerData(ss, days, month, accounts);
+        break;
+      case 'ledger_all':
+        result = getLedgerData(ss, 0, month, accounts);
+        break;
+      case 'accounts':
+        result = { data: readSheet(ss, TABS.ACCOUNTS), timestamp: now() };
+        break;
+      case 'exchange':
+        result = { rate: getExchangeRate(ss), timestamp: now() };
+        break;
+      default:
+        var tabName = TABS[action.toUpperCase()] || action;
+        result = { data: readSheet(ss, tabName), timestamp: now() };
     }
-    
+
     return ContentService
       .createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
-      
+
   } catch (err) {
     return ContentService
-      .createTextOutput(JSON.stringify({ error: err.message }))
+      .createTextOutput(JSON.stringify({ error: err.message, stack: err.stack }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-function getSheetDataById(ss, name) {
+function now() { return new Date().toISOString(); }
+
+// ==================== DATA RETRIEVAL ====================
+
+function getAllData(ss, days) {
+  var ledger = getLedgerData(ss, days, null, null);
+  return {
+    accounts: readSheet(ss, TABS.ACCOUNTS),
+    ledger: ledger.data,
+    ledgerMeta: ledger.meta,
+    wages: readSheet(ss, TABS.WAGES),
+    bills: readSheet(ss, TABS.BILLS),
+    savings: readSheet(ss, TABS.SAVINGS),
+    projections: readSheet(ss, TABS.PROJECTIONS),
+    history: readSheet(ss, TABS.HISTORY),
+    dashboard: readSheet(ss, TABS.DASHBOARD),
+    exchangeRate: getExchangeRate(ss),
+    timestamp: now()
+  };
+}
+
+function getLedgerData(ss, days, month, accountFilter) {
+  var sheet = ss.getSheetByName(TABS.LEDGER);
+  if (!sheet || sheet.getLastRow() <= 1) return { data: [], meta: { total: 0 } };
+
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var allData = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+
+  var dateIdx = headers.indexOf('Date');
+  var accountIdx = headers.indexOf('Account');
+
+  var filtered = allData;
+
+  // Filter by date
+  if (month) {
+    // month format: "2026-02"
+    filtered = filtered.filter(function(row) {
+      var d = new Date(row[dateIdx]);
+      var m = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      return m === month;
+    });
+  } else if (days > 0) {
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    cutoff.setHours(0, 0, 0, 0);
+    filtered = filtered.filter(function(row) {
+      return new Date(row[dateIdx]) >= cutoff;
+    });
+  }
+
+  // Filter by accounts
+  if (accountFilter && accountFilter.length > 0) {
+    filtered = filtered.filter(function(row) {
+      return accountFilter.indexOf(row[accountIdx]) >= 0;
+    });
+  }
+
+  // Convert to objects
+  var result = filtered.map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+
+  return {
+    data: result,
+    meta: {
+      total: allData.length,
+      filtered: result.length,
+      days: days,
+      month: month
+    }
+  };
+}
+
+function getExchangeRate(ss) {
+  var sheet = ss.getSheetByName(TABS.EXCHANGE);
+  if (!sheet || sheet.getLastRow() <= 1) return { gbpToAud: 1.95, audToGbp: 0.513, date: now(), source: 'default' };
+
+  var lastRow = sheet.getLastRow();
+  var data = sheet.getRange(lastRow, 1, 1, 4).getValues()[0];
+  return {
+    gbpToAud: data[1] || 1.95,
+    audToGbp: data[2] || 0.513,
+    date: data[0] ? new Date(data[0]).toISOString() : now(),
+    source: data[3] || 'manual'
+  };
+}
+
+function readSheet(ss, name) {
   var sheet = ss.getSheetByName(name);
   if (!sheet || sheet.getLastRow() <= 1) return [];
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -609,31 +174,301 @@ function getSheetDataById(ss, name) {
   });
 }
 
-// ==================== DATA EXPORT ====================
+// ==================== INITIALIZATION ====================
 
-function exportDataForBAI() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  return JSON.stringify({
-    accounts: getSheetData(ss, CONFIG.SHEETS.ACCOUNTS),
-    transactions: getSheetData(ss, CONFIG.SHEETS.TRANSACTIONS),
-    wages: getSheetData(ss, CONFIG.SHEETS.WAGES),
-    bills: getSheetData(ss, CONFIG.SHEETS.BILLS),
-    savings: getSheetData(ss, CONFIG.SHEETS.SAVINGS),
-    projections: getSheetData(ss, CONFIG.SHEETS.PROJECTIONS),
-    history: getSheetData(ss, CONFIG.SHEETS.HISTORY),
-    dashboard: getSheetData(ss, CONFIG.SHEETS.DASHBOARD),
-    exportTimestamp: new Date().toISOString()
+function initializeSpreadsheet() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+
+  // Ledger - the main unified statement
+  createSheet(ss, TABS.LEDGER, [
+    'Date', 'Description', 'Amount', 'Balance After', 'Category',
+    'Account', 'Bank', 'User', 'Currency', 'Type', 'ID', 'Notes'
+  ]);
+
+  // Accounts
+  var accountsSheet = createSheet(ss, TABS.ACCOUNTS, [
+    'Account Name', 'Type', 'Bank', 'User', 'Purpose',
+    'Current Balance', 'Previous Balance', 'Change', 'Currency', 'Last Updated'
+  ]);
+  if (accountsSheet.getLastRow() <= 1) {
+    var rows = ACCOUNTS_LIST.map(function(a) {
+      return [a.name, a.type, a.bank, a.user, a.purpose, 0, 0, 0, a.currency, new Date()];
+    });
+    accountsSheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  }
+
+  // Exchange Rates
+  var exSheet = createSheet(ss, TABS.EXCHANGE, ['Date', 'GBP to AUD', 'AUD to GBP', 'Source']);
+  if (exSheet.getLastRow() <= 1) {
+    exSheet.appendRow([new Date(), 1.95, 0.513, 'default']);
+  }
+
+  // Other tabs
+  createSheet(ss, TABS.WAGES, ['Date', 'Day of Week', 'User', 'Amount', 'Currency', 'Account', 'Notes']);
+  createSheet(ss, TABS.BILLS, ['Bill Name', 'Amount', 'Currency', 'Frequency', 'Category', 'Account', 'Last Paid Date', 'Next Due Date', 'Status', 'Notes']);
+  createSheet(ss, TABS.SAVINGS, ['Goal Name', 'Description', 'Target Amount', 'Current Amount', 'Monthly Contribution', 'Target Date', 'Priority', 'Progress %']);
+  createSheet(ss, TABS.PROJECTIONS, ['Month', 'Projected Income', 'Projected Bills', 'Projected Spending', 'Projected Savings', 'Net Position', 'Type']);
+  createSheet(ss, TABS.HISTORY, ['Month', 'Total Income', 'Bailey Income', 'Katie Income', 'Total Bills', 'Total Spending', 'Bailey Spending', 'Katie Spending', 'Joint Spending', 'Total Saved', 'Net Position', 'Type']);
+  createSheet(ss, TABS.DASHBOARD, ['Metric', 'Value', 'Change', 'Last Updated', 'Notes']);
+
+  // Remove default Sheet1
+  var def = ss.getSheetByName('Sheet1');
+  if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
+
+  setupTriggers();
+  formatSheets(ss);
+
+  return '✅ Spreadsheet initialized with Ledger + Exchange Rates tabs';
+}
+
+function createSheet(ss, name, headers) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  if (sheet.getLastRow() < 1 || sheet.getRange(1, 1).getValue() === '') {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold').setBackground('#f0f4f8');
+  }
+  return sheet;
+}
+
+function formatSheets(ss) {
+  var ledger = ss.getSheetByName(TABS.LEDGER);
+  if (ledger) {
+    ledger.getRange('C2:D10000').setNumberFormat('#,##0.00');
+  }
+  var acc = ss.getSheetByName(TABS.ACCOUNTS);
+  if (acc) acc.getRange('F2:H100').setNumberFormat('#,##0.00');
+}
+
+// ==================== TRIGGERS ====================
+
+function setupTriggers() {
+  ScriptApp.getProjectTriggers().forEach(function(t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('dailyProcessing').timeBased().everyDays(1).atHour(9).create();
+  ScriptApp.newTrigger('updateExchangeRate').timeBased().everyDays(1).atHour(8).create();
+}
+
+// ==================== EXCHANGE RATE ====================
+
+function updateExchangeRate() {
+  try {
+    // Use Google Finance or a free API
+    var url = 'https://api.exchangerate-api.com/v4/latest/GBP';
+    var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var data = JSON.parse(response.getContentText());
+    var gbpToAud = data.rates.AUD || 1.95;
+    var audToGbp = 1 / gbpToAud;
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName(TABS.EXCHANGE);
+    if (!sheet) return;
+    sheet.appendRow([new Date(), gbpToAud, audToGbp, 'exchangerate-api.com']);
+  } catch (e) {
+    Logger.log('Exchange rate update failed: ' + e.message);
+  }
+}
+
+// ==================== LEDGER OPERATIONS ====================
+
+function addLedgerEntry(date, description, amount, account, category, notes) {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var ledger = ss.getSheetByName(TABS.LEDGER);
+  if (!ledger) return;
+
+  var acct = ACCOUNTS_LIST.filter(function(a) { return a.name === account; })[0];
+  var currency = acct ? acct.currency : 'AUD';
+  var bank = acct ? acct.bank : '';
+  var user = acct ? acct.user : '';
+  var type = amount > 0 ? 'income' : 'expense';
+
+  // Calculate balance after
+  var balanceAfter = getLastBalance(ledger, account) + amount;
+
+  // Auto-categorize if not provided
+  if (!category) category = categorize(description, amount);
+
+  ledger.appendRow([
+    new Date(date), description, amount, balanceAfter, category,
+    account, bank, user, currency, type,
+    'txn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    notes || ''
+  ]);
+
+  // Update account balance
+  updateAccountBalance(ss, account, balanceAfter);
+
+  return balanceAfter;
+}
+
+function getLastBalance(ledger, account) {
+  if (ledger.getLastRow() <= 1) return 0;
+  var data = ledger.getRange(2, 1, ledger.getLastRow() - 1, 12).getValues();
+  // Find last entry for this account (column 5 = Account, column 3 = Balance After)
+  for (var i = data.length - 1; i >= 0; i--) {
+    if (data[i][5] === account) return data[i][3] || 0;
+  }
+  return 0;
+}
+
+function updateAccountBalance(ss, accountName, newBalance) {
+  var sheet = ss.getSheetByName(TABS.ACCOUNTS);
+  if (!sheet || sheet.getLastRow() <= 1) return;
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] === accountName) {
+      var row = i + 2;
+      var prev = sheet.getRange(row, 6).getValue() || 0;
+      sheet.getRange(row, 7).setValue(prev); // Previous balance
+      sheet.getRange(row, 6).setValue(newBalance); // Current balance
+      sheet.getRange(row, 8).setValue(newBalance - prev); // Change
+      sheet.getRange(row, 10).setValue(new Date()); // Last updated
+      break;
+    }
+  }
+}
+
+// ==================== CATEGORIZATION ====================
+
+function categorize(description, amount) {
+  var desc = description.toLowerCase();
+  if (amount > 0) {
+    if (['salary', 'wage', 'pay', 'income'].some(function(k) { return desc.indexOf(k) >= 0; })) return 'Income';
+    if (['transfer'].some(function(k) { return desc.indexOf(k) >= 0; })) return 'Transfer';
+    return 'Income';
+  }
+
+  var map = {
+    'Housing': ['rent', 'mortgage', 'property'],
+    'Utilities': ['electricity', 'gas', 'water', 'internet', 'phone', 'mobile', 'optus', 'telstra', 'vodafone'],
+    'Food & Dining': ['restaurant', 'cafe', 'takeaway', 'grocery', 'supermarket', 'woolworths', 'coles', 'aldi', 'uber eats', 'deliveroo', 'menulog'],
+    'Transportation': ['fuel', 'petrol', 'uber', 'taxi', 'train', 'bus', 'parking', 'shell', 'bp', 'opal', 'toll'],
+    'Entertainment': ['cinema', 'movie', 'netflix', 'spotify', 'gym', 'disney', 'stan', 'binge', 'youtube'],
+    'Shopping': ['amazon', 'target', 'kmart', 'clothing', 'fashion', 'big w', 'jb hi-fi'],
+    'Healthcare': ['doctor', 'medical', 'pharmacy', 'hospital', 'dental', 'chemist'],
+    'Insurance': ['insurance', 'cover', 'policy', 'nrma', 'allianz'],
+    'Transfer': ['transfer', 'bpay']
+  };
+
+  for (var cat in map) {
+    if (map[cat].some(function(k) { return desc.indexOf(k) >= 0; })) return cat;
+  }
+  return 'Miscellaneous';
+}
+
+// ==================== WAGE TRACKING ====================
+
+function addWageEntry(date, user, amount, account) {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName(TABS.WAGES);
+  if (!sheet) return;
+  var d = new Date(date);
+  var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var acct = ACCOUNTS_LIST.filter(function(a) { return a.name === account; })[0];
+  sheet.appendRow([d, days[d.getDay()], user, amount, acct ? acct.currency : 'AUD', account, 'Auto-detected']);
+}
+
+// ==================== DAILY PROCESSING ====================
+
+function dailyProcessing() {
+  updateMonthlyHistory();
+  updateDashboardMetrics();
+  checkUpcomingBills();
+}
+
+function updateMonthlyHistory() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var ledger = ss.getSheetByName(TABS.LEDGER);
+  var historySheet = ss.getSheetByName(TABS.HISTORY);
+  if (!ledger || !historySheet || ledger.getLastRow() <= 1) return;
+
+  var data = ledger.getRange(2, 1, ledger.getLastRow() - 1, 12).getValues();
+
+  var monthly = {};
+  data.forEach(function(row) {
+    var date = new Date(row[0]);
+    if (isNaN(date.getTime())) return;
+    var key = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+    if (!monthly[key]) {
+      monthly[key] = { totalIncome: 0, baileyIncome: 0, katieIncome: 0, totalBills: 0, totalSpending: 0, baileySpending: 0, katieSpending: 0, jointSpending: 0, totalSaved: 0 };
+    }
+    var amount = row[2] || 0;
+    var user = row[7] || '';
+    var account = row[5] || '';
+    if (amount > 0) {
+      monthly[key].totalIncome += amount;
+      if (user === 'Bailey') monthly[key].baileyIncome += amount;
+      if (user === 'Katie') monthly[key].katieIncome += amount;
+    } else {
+      var abs = Math.abs(amount);
+      if (account.indexOf('Joint') >= 0 && account.indexOf('Commonwealth') >= 0 && account.indexOf('Saver') < 0) {
+        monthly[key].totalBills += abs;
+      } else if (account.indexOf('Saver') >= 0) {
+        monthly[key].totalSaved += abs;
+      } else {
+        monthly[key].totalSpending += abs;
+        if (user === 'Bailey') monthly[key].baileySpending += abs;
+        else if (user === 'Katie') monthly[key].katieSpending += abs;
+        else monthly[key].jointSpending += abs;
+      }
+    }
+  });
+
+  historySheet.getRange(2, 1, historySheet.getMaxRows() - 1, 12).clearContent();
+  var months = Object.keys(monthly).sort();
+  var rows = months.map(function(m) {
+    var d = monthly[m];
+    return [m, d.totalIncome, d.baileyIncome, d.katieIncome, d.totalBills, d.totalSpending, d.baileySpending, d.katieSpending, d.jointSpending, d.totalSaved, d.totalIncome - d.totalBills - d.totalSpending, 'Actual'];
+  });
+  if (rows.length > 0) historySheet.getRange(2, 1, rows.length, 12).setValues(rows);
+}
+
+function updateDashboardMetrics() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var dashboard = ss.getSheetByName(TABS.DASHBOARD);
+  if (!dashboard) return;
+
+  var accounts = readSheet(ss, TABS.ACCOUNTS);
+  var netWorth = accounts.reduce(function(s, a) { return s + (parseFloat(a['Current Balance']) || 0); }, 0);
+
+  var metrics = [
+    ['Net Worth', netWorth, '', new Date(), 'All accounts combined'],
+    ['Exchange Rate (GBP→AUD)', getExchangeRate(ss).gbpToAud, '', new Date(), 'Daily rate']
+  ];
+
+  dashboard.getRange(2, 1, dashboard.getMaxRows() - 1, 5).clearContent();
+  dashboard.getRange(2, 1, metrics.length, 5).setValues(metrics);
+}
+
+function checkUpcomingBills() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName(TABS.BILLS);
+  if (!sheet || sheet.getLastRow() <= 1) return;
+  var bills = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
+  var now = new Date();
+  bills.forEach(function(bill, idx) {
+    var nextDue = new Date(bill[7]);
+    var daysUntil = (nextDue - now) / (1000 * 60 * 60 * 24);
+    var status = 'Active';
+    if (daysUntil < 0) status = 'Overdue';
+    else if (daysUntil <= 3) status = 'Due Soon';
+    else if (daysUntil <= 7) status = 'Upcoming';
+    sheet.getRange(idx + 2, 9).setValue(status);
   });
 }
 
-function getSheetData(ss, name) {
-  const sheet = ss.getSheetByName(name);
-  if (!sheet || sheet.getLastRow() <= 1) return [];
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
-  return data.map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
-    return obj;
+// ==================== MONTHS LIST (for frontend) ====================
+
+function getAvailableMonths() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var ledger = ss.getSheetByName(TABS.LEDGER);
+  if (!ledger || ledger.getLastRow() <= 1) return [];
+  var dates = ledger.getRange(2, 1, ledger.getLastRow() - 1, 1).getValues();
+  var months = {};
+  dates.forEach(function(row) {
+    var d = new Date(row[0]);
+    if (!isNaN(d.getTime())) {
+      var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      months[key] = true;
+    }
   });
+  return Object.keys(months).sort();
 }
