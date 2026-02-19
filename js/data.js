@@ -6,182 +6,249 @@ class DataManager {
     this.lastFetch = new Map();
     this.refreshInterval = CONFIG.REFRESH_INTERVALS.NORMAL;
     this.isOnline = navigator.onLine;
+    this.dataSource = 'loading'; // 'live', 'mock', 'loading'
     
-    // Listen for online/offline events
     window.addEventListener('online', () => this.isOnline = true);
     window.addEventListener('offline', () => this.isOnline = false);
-    
-    // Initialize mock data for demo purposes
-    this.initializeMockData();
   }
 
-  // Initialize with mock data for demonstration
+  // Fetch all data from Google Apps Script webapp
+  async fetchFromGAS() {
+    const url = CONFIG.GAS_WEBAPP.URL;
+    if (!url || url === 'YOUR_WEBAPP_URL_HERE') {
+      console.warn('GAS webapp URL not configured, using mock data');
+      this.initializeMockData();
+      return false;
+    }
+
+    try {
+      console.log('📡 Fetching data from Google Sheets...');
+      const response = await fetch(url + '?action=all');
+      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const raw = await response.json();
+      
+      if (raw.error) throw new Error(raw.error);
+      
+      // Transform GAS data into the format the dashboard expects
+      this.transformAndCache(raw);
+      this.dataSource = 'live';
+      console.log('✅ Live data loaded from Google Sheets');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch from GAS:', error);
+      // Fall back to mock data if we have nothing cached
+      if (this.cache.size === 0) {
+        this.initializeMockData();
+      }
+      return false;
+    }
+  }
+
+  // Transform raw GAS response into dashboard-compatible format
+  transformAndCache(raw) {
+    // --- Accounts ---
+    const accounts = (raw.accounts || []).map((a, i) => ({
+      id: `account_${i}`,
+      name: a['Account Name'] || a.name || `Account ${i}`,
+      type: this.mapAccountType(a['Type'] || a.type || 'checking'),
+      bank: a['Bank'] || '',
+      user: a['User'] || '',
+      purpose: a['Purpose'] || '',
+      balance: parseFloat(a['Current Balance']) || 0,
+      previousBalance: parseFloat(a['Previous Balance']) || 0,
+      change: parseFloat(a['Change']) || 0,
+      lastUpdate: a['Last Updated'] ? new Date(a['Last Updated']) : new Date()
+    }));
+
+    // --- Transactions ---
+    const transactions = (raw.transactions || []).map((t, i) => ({
+      id: t['ID'] || `txn_${i}`,
+      description: t['Description'] || '',
+      amount: parseFloat(t['Amount']) || 0,
+      date: t['Date'] ? new Date(t['Date']) : new Date(),
+      category: t['Category'] || 'Miscellaneous',
+      account: t['Account'] || '',
+      bank: t['Bank'] || '',
+      user: t['User'] || '',
+      type: (parseFloat(t['Amount']) || 0) > 0 ? 'income' : 'expense',
+      notes: t['Notes'] || ''
+    })).sort((a, b) => b.date - a.date);
+
+    // --- Bills ---
+    const bills = (raw.bills || []).map((b, i) => ({
+      id: `bill_${i}`,
+      name: b['Bill Name'] || '',
+      amount: Math.abs(parseFloat(b['Amount'])) || 0,
+      frequency: b['Frequency'] || 'Monthly',
+      category: b['Category'] || '',
+      account: b['Account'] || '',
+      dueDate: b['Next Due Date'] ? new Date(b['Next Due Date']) : new Date(),
+      lastPaid: b['Last Paid Date'] ? new Date(b['Last Paid Date']) : null,
+      status: (b['Status'] || 'pending').toLowerCase(),
+      notes: b['Notes'] || ''
+    }));
+
+    // --- Goals (Savings) ---
+    const goals = (raw.savings || []).map((g, i) => ({
+      id: `goal_${i}`,
+      name: g['Goal Name'] || '',
+      description: g['Description'] || '',
+      targetAmount: parseFloat(g['Target Amount']) || 0,
+      currentAmount: parseFloat(g['Current Amount']) || 0,
+      monthlyContribution: parseFloat(g['Monthly Contribution']) || 0,
+      targetDate: g['Target Date'] ? new Date(g['Target Date']) : null,
+      priority: g['Priority'] || 'medium',
+      category: 'savings'
+    }));
+
+    // --- Wages ---
+    const wages = (raw.wages || []).map((w, i) => ({
+      id: `wage_${i}`,
+      date: w['Date'] ? new Date(w['Date']) : new Date(),
+      dayOfWeek: w['Day of Week'] || '',
+      user: w['User'] || '',
+      amount: parseFloat(w['Amount']) || 0,
+      account: w['Account'] || '',
+      notes: w['Notes'] || ''
+    }));
+
+    // --- Dashboard metrics ---
+    const dashboardMetrics = {};
+    (raw.dashboard || []).forEach(m => {
+      if (m['Metric']) dashboardMetrics[m['Metric']] = parseFloat(m['Value']) || 0;
+    });
+
+    // --- Insights (generated from data) ---
+    const insights = this.generateInsights(accounts, transactions, bills, goals);
+
+    // Cache everything
+    this.updateCache('accounts', accounts);
+    this.updateCache('transactions', transactions);
+    this.updateCache('bills', bills);
+    this.updateCache('goals', goals);
+    this.updateCache('wages', wages);
+    this.updateCache('dashboardMetrics', dashboardMetrics);
+    this.updateCache('insights', insights);
+    this.updateCache('rawHistory', raw.history || []);
+    this.updateCache('rawProjections', raw.projections || []);
+  }
+
+  mapAccountType(type) {
+    const t = (type || '').toLowerCase();
+    if (t.includes('saving')) return 'savings';
+    if (t.includes('credit')) return 'credit';
+    if (t.includes('invest')) return 'investment';
+    return 'checking';
+  }
+
+  generateInsights(accounts, transactions, bills, goals) {
+    const insights = [];
+    
+    // Check for upcoming bills
+    const now = new Date();
+    const urgentBills = bills.filter(b => {
+      const days = (b.dueDate - now) / (1000 * 60 * 60 * 24);
+      return days >= 0 && days <= 7;
+    });
+    if (urgentBills.length > 0) {
+      insights.push({
+        id: 'insight_bills',
+        type: 'warning',
+        title: `${urgentBills.length} Bill${urgentBills.length > 1 ? 's' : ''} Due This Week`,
+        description: urgentBills.map(b => `${b.name}: $${b.amount.toFixed(2)}`).join(', '),
+        priority: 'high',
+        timestamp: now
+      });
+    }
+
+    // Savings rate insight
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const recentTxns = transactions.filter(t => t.date >= thirtyDaysAgo);
+    const income = recentTxns.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const expenses = Math.abs(recentTxns.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0));
+    
+    if (income > 0) {
+      const rate = ((income - expenses) / income * 100).toFixed(1);
+      insights.push({
+        id: 'insight_savings',
+        type: rate >= 20 ? 'recommendation' : 'warning',
+        title: `Savings Rate: ${rate}%`,
+        description: rate >= 20 
+          ? 'Great job! You\'re saving over 20% of your income.'
+          : 'Your savings rate is below 20%. Consider reviewing discretionary spending.',
+        priority: rate >= 20 ? 'low' : 'medium',
+        timestamp: now
+      });
+    }
+
+    // Goal progress
+    goals.forEach(g => {
+      if (g.targetAmount > 0) {
+        const pct = (g.currentAmount / g.targetAmount * 100).toFixed(0);
+        if (pct >= 75) {
+          insights.push({
+            id: `insight_goal_${g.id}`,
+            type: 'recommendation',
+            title: `${g.name}: ${pct}% Complete! 🎉`,
+            description: `Only $${(g.targetAmount - g.currentAmount).toFixed(2)} to go.`,
+            priority: 'low',
+            timestamp: now
+          });
+        }
+      }
+    });
+
+    // If no data at all
+    if (transactions.length === 0 && accounts.every(a => a.balance === 0)) {
+      insights.push({
+        id: 'insight_getstarted',
+        type: 'recommendation',
+        title: 'Getting Started',
+        description: 'Upload your first bank statement screenshot to #finances on Discord and BAI will process it!',
+        priority: 'medium',
+        timestamp: now
+      });
+    }
+
+    return insights;
+  }
+
+  // Initialize with mock data (fallback)
   initializeMockData() {
+    this.dataSource = 'mock';
+    console.log('📋 Using mock data (Google Sheets not available)');
+
     const mockData = {
       accounts: [
-        {
-          id: 'checking_001',
-          name: 'Joint Checking',
-          type: 'checking',
-          balance: 5420.50,
-          lastUpdate: new Date(),
-          change: 150.00
-        },
-        {
-          id: 'savings_001',
-          name: 'Emergency Fund',
-          type: 'savings',
-          balance: 12800.75,
-          lastUpdate: new Date(),
-          change: 500.00
-        },
-        {
-          id: 'savings_002',
-          name: 'Vacation Fund',
-          type: 'savings',
-          balance: 3200.00,
-          lastUpdate: new Date(),
-          change: 200.00
-        },
-        {
-          id: 'credit_001',
-          name: 'Credit Card',
-          type: 'credit',
-          balance: -1250.30,
-          lastUpdate: new Date(),
-          change: -75.00
-        }
+        { id: 'bw_cba', name: 'BW Personal (Commonwealth)', type: 'checking', bank: 'CBA', user: 'Bailey', purpose: 'Wages', balance: 0, change: 0, lastUpdate: new Date() },
+        { id: 'katie_cba', name: 'Katie Personal (Commonwealth)', type: 'checking', bank: 'CBA', user: 'Katie', purpose: 'Wages', balance: 0, change: 0, lastUpdate: new Date() },
+        { id: 'joint_cba', name: 'Joint (Commonwealth)', type: 'checking', bank: 'CBA', user: 'Joint', purpose: 'Recurring Bills', balance: 0, change: 0, lastUpdate: new Date() },
+        { id: 'saver_cba', name: 'Joint Saver (Commonwealth)', type: 'savings', bank: 'CBA', user: 'Joint', purpose: 'Savings', balance: 0, change: 0, lastUpdate: new Date() },
+        { id: 'bw_starling', name: 'BW Personal (Starling)', type: 'checking', bank: 'Starling', user: 'Bailey', purpose: 'Spending', balance: 0, change: 0, lastUpdate: new Date() },
+        { id: 'katie_starling', name: 'Katie Personal (Starling)', type: 'checking', bank: 'Starling', user: 'Katie', purpose: 'Spending', balance: 0, change: 0, lastUpdate: new Date() },
+        { id: 'joint_starling', name: 'Joint (Starling)', type: 'checking', bank: 'Starling', user: 'Joint', purpose: 'Food & Spending', balance: 0, change: 0, lastUpdate: new Date() },
+        { id: 'cc_capone', name: 'Credit Card (Capital One)', type: 'credit', bank: 'Capital One', user: 'Joint', purpose: 'Credit', balance: 0, change: 0, lastUpdate: new Date() }
       ],
-      
-      transactions: this.generateMockTransactions(),
-      
-      bills: [
-        {
-          id: 'bill_001',
-          name: 'Rent',
-          amount: 2200.00,
-          dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
-          status: 'pending',
-          category: 'Housing',
-          account: 'checking_001'
-        },
-        {
-          id: 'bill_002',
-          name: 'Electricity',
-          amount: 180.50,
-          dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-          status: 'pending',
-          category: 'Utilities',
-          account: 'checking_001'
-        },
-        {
-          id: 'bill_003',
-          name: 'Internet',
-          amount: 89.99,
-          dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-          status: 'pending',
-          category: 'Utilities',
-          account: 'checking_001'
-        }
-      ],
-
-      goals: [
-        {
-          id: 'goal_001',
-          name: 'Emergency Fund',
-          description: 'Save 6 months of expenses',
-          targetAmount: 20000.00,
-          currentAmount: 12800.75,
-          targetDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-          category: 'savings',
-          priority: 'high'
-        },
-        {
-          id: 'goal_002',
-          name: 'Vacation Fund',
-          description: 'Europe trip next year',
-          targetAmount: 8000.00,
-          currentAmount: 3200.00,
-          targetDate: new Date(Date.now() + 300 * 24 * 60 * 60 * 1000),
-          category: 'lifestyle',
-          priority: 'medium'
-        },
-        {
-          id: 'goal_003',
-          name: 'House Deposit',
-          description: 'Save for house down payment',
-          targetAmount: 80000.00,
-          currentAmount: 15000.00,
-          targetDate: new Date(Date.now() + 730 * 24 * 60 * 60 * 1000),
-          category: 'investment',
-          priority: 'high'
-        }
-      ],
-
-      insights: [
-        {
-          id: 'insight_001',
-          type: 'recommendation',
-          title: 'Optimize Your Savings',
-          description: 'You could save an extra $200/month by reducing dining out expenses.',
-          priority: 'medium',
-          timestamp: new Date()
-        },
-        {
-          id: 'insight_002',
-          type: 'warning',
-          title: 'Credit Card Balance Growing',
-          description: 'Your credit card balance has increased by 25% this month.',
-          priority: 'high',
-          timestamp: new Date()
-        }
-      ]
+      transactions: [],
+      bills: [],
+      goals: [],
+      insights: [{
+        id: 'insight_getstarted',
+        type: 'recommendation',
+        title: 'Getting Started',
+        description: 'Upload your first bank statement screenshot to #finances on Discord and BAI will process it!',
+        priority: 'medium',
+        timestamp: new Date()
+      }]
     };
 
-    // Cache the mock data
     Object.keys(mockData).forEach(key => {
       this.cache.set(key, mockData[key]);
       this.lastFetch.set(key, new Date());
     });
-  }
-
-  // Generate mock transactions for demonstration
-  generateMockTransactions(count = 50) {
-    const transactions = [];
-    const descriptions = [
-      'Woolworths Supermarket',
-      'Shell Service Station',
-      'Netflix Subscription',
-      'Salary Deposit',
-      'Uber Trip',
-      'Coffee Club',
-      'Target Australia',
-      'Electricity Bill',
-      'Gym Membership',
-      'Restaurant Booking'
-    ];
-
-    for (let i = 0; i < count; i++) {
-      const isIncome = Math.random() < 0.2; // 20% chance of income
-      const amount = isIncome 
-        ? Math.random() * 3000 + 1000 // Income: $1000-$4000
-        : -(Math.random() * 200 + 10); // Expense: $10-$210
-
-      const description = descriptions[Math.floor(Math.random() * descriptions.length)];
-      const date = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-
-      transactions.push({
-        id: `txn_${Utils.generateId()}`,
-        description,
-        amount,
-        date,
-        category: Utils.detectCategory(description, amount),
-        account: 'checking_001',
-        type: amount > 0 ? 'income' : 'expense'
-      });
-    }
-
-    return transactions.sort((a, b) => b.date - a.date);
   }
 
   // Check if cached data is still fresh
@@ -191,63 +258,35 @@ class DataManager {
     return (Date.now() - lastFetch.getTime()) < maxAge;
   }
 
-  // Get data from cache or fetch fresh data
+  // Get data from cache or fetch fresh
   async getData(dataType, forceRefresh = false) {
     try {
-      // Return cached data if fresh and not forcing refresh
       if (!forceRefresh && this.isCacheFresh(dataType)) {
         return Utils.handleSuccess(this.cache.get(dataType));
       }
 
-      // In a real implementation, this would fetch from Google Sheets
-      // For now, return mock data or cached data
+      // Try fetching from GAS if cache is stale
+      if (this.isOnline && (forceRefresh || !this.isCacheFresh(dataType))) {
+        await this.fetchFromGAS();
+      }
+
       const cachedData = this.cache.get(dataType);
       if (cachedData) {
         return Utils.handleSuccess(cachedData);
       }
 
-      // If no cached data and we're offline, return error
-      if (!this.isOnline) {
-        return Utils.handleError(new Error('No cached data available offline'));
-      }
-
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Return cached data (in real app, this would be fresh API data)
-      return Utils.handleSuccess(this.cache.get(dataType));
-
+      return Utils.handleError(new Error('No data available'));
     } catch (error) {
       return Utils.handleError(error, `fetching ${dataType}`);
     }
   }
 
-  // Get account data
-  async getAccounts(forceRefresh = false) {
-    return this.getData('accounts', forceRefresh);
-  }
+  async getAccounts(forceRefresh = false) { return this.getData('accounts', forceRefresh); }
+  async getTransactions(forceRefresh = false) { return this.getData('transactions', forceRefresh); }
+  async getBills(forceRefresh = false) { return this.getData('bills', forceRefresh); }
+  async getGoals(forceRefresh = false) { return this.getData('goals', forceRefresh); }
+  async getInsights(forceRefresh = false) { return this.getData('insights', forceRefresh); }
 
-  // Get transaction data
-  async getTransactions(forceRefresh = false) {
-    return this.getData('transactions', forceRefresh);
-  }
-
-  // Get bill data
-  async getBills(forceRefresh = false) {
-    return this.getData('bills', forceRefresh);
-  }
-
-  // Get goal data
-  async getGoals(forceRefresh = false) {
-    return this.getData('goals', forceRefresh);
-  }
-
-  // Get insights data
-  async getInsights(forceRefresh = false) {
-    return this.getData('insights', forceRefresh);
-  }
-
-  // Get dashboard summary data
   async getDashboardData(forceRefresh = false) {
     try {
       const [accounts, transactions, bills, goals] = await Promise.all([
@@ -264,27 +303,19 @@ class DataManager {
       const summary = this.calculateDashboardSummary(
         accounts.data,
         transactions.data,
-        bills.data,
-        goals.data
+        bills.data || [],
+        goals.data || []
       );
 
       return Utils.handleSuccess(summary);
-
     } catch (error) {
       return Utils.handleError(error, 'fetching dashboard data');
     }
   }
 
-  // Calculate dashboard summary metrics
   calculateDashboardSummary(accounts, transactions, bills, goals) {
-    // Calculate net worth
-    const netWorth = accounts.reduce((total, account) => {
-      return account.type === 'credit' 
-        ? total + account.balance // Credit balances are negative
-        : total + account.balance;
-    }, 0);
+    const netWorth = accounts.reduce((total, account) => total + account.balance, 0);
 
-    // Calculate monthly income and expenses
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const recentTransactions = transactions.filter(t => t.date >= thirtyDaysAgo);
     
@@ -296,113 +327,68 @@ class DataManager {
       .filter(t => t.amount < 0)
       .reduce((sum, t) => sum + t.amount, 0));
 
-    // Calculate savings rate
     const savingsRate = Utils.calculateSavingsRate(monthlyIncome, monthlyExpenses);
 
-    // Calculate upcoming bills
     const upcomingBills = bills.filter(bill => {
       const daysUntilDue = (bill.dueDate - new Date()) / (1000 * 60 * 60 * 24);
-      return daysUntilDue <= 30 && bill.status === 'pending';
+      return daysUntilDue <= 30 && daysUntilDue >= 0;
     });
 
-    // Calculate goal progress
-    const totalGoalProgress = goals.reduce((total, goal) => {
-      return total + (goal.currentAmount / goal.targetAmount);
-    }, 0) / goals.length;
+    const totalGoalProgress = goals.length > 0
+      ? goals.reduce((total, goal) => total + (goal.currentAmount / (goal.targetAmount || 1)), 0) / goals.length
+      : 0;
 
-    // Calculate financial health score
     const healthScore = this.calculateHealthScore({
-      netWorth,
-      monthlyIncome,
-      monthlyExpenses,
-      savingsRate,
-      accounts,
-      goals
+      netWorth, monthlyIncome, monthlyExpenses, savingsRate, accounts, goals
     });
 
     return {
-      netWorth,
-      monthlyIncome,
-      monthlyExpenses,
-      savingsRate,
-      upcomingBills,
-      totalGoalProgress,
-      healthScore,
+      netWorth, monthlyIncome, monthlyExpenses, savingsRate,
+      upcomingBills, totalGoalProgress, healthScore,
+      dataSource: this.dataSource,
       lastUpdate: new Date()
     };
   }
 
-  // Calculate financial health score (0-100)
   calculateHealthScore({ netWorth, monthlyIncome, monthlyExpenses, savingsRate, accounts, goals }) {
     let score = 0;
     const factors = [];
 
-    // Emergency fund factor (25 points)
-    const emergencyFund = accounts
-      .filter(acc => acc.type === 'savings')
-      .reduce((sum, acc) => sum + acc.balance, 0);
-    const monthsOfExpenses = monthlyExpenses > 0 ? emergencyFund / monthlyExpenses : 0;
-    
-    if (monthsOfExpenses >= 6) {
-      score += 25;
-      factors.push({ name: 'Emergency Fund', score: 25, maxScore: 25 });
-    } else {
-      const emergencyScore = Math.min(25, (monthsOfExpenses / 6) * 25);
-      score += emergencyScore;
-      factors.push({ name: 'Emergency Fund', score: Math.round(emergencyScore), maxScore: 25 });
-    }
+    // Emergency fund (25 pts)
+    const savingsBalance = accounts.filter(a => a.type === 'savings').reduce((s, a) => s + a.balance, 0);
+    const monthsOfExpenses = monthlyExpenses > 0 ? savingsBalance / monthlyExpenses : 0;
+    const emergencyScore = Math.min(25, (monthsOfExpenses / 6) * 25);
+    score += emergencyScore;
+    factors.push({ name: 'Emergency Fund', score: Math.round(emergencyScore), maxScore: 25 });
 
-    // Savings rate factor (25 points)
-    if (savingsRate >= 0.2) {
-      score += 25;
-      factors.push({ name: 'Savings Rate', score: 25, maxScore: 25 });
-    } else if (savingsRate >= 0) {
-      const savingsScore = (savingsRate / 0.2) * 25;
-      score += savingsScore;
-      factors.push({ name: 'Savings Rate', score: Math.round(savingsScore), maxScore: 25 });
-    } else {
-      factors.push({ name: 'Savings Rate', score: 0, maxScore: 25 });
-    }
+    // Savings rate (25 pts)
+    const savingsScore = savingsRate >= 0 ? Math.min(25, (savingsRate / 0.2) * 25) : 0;
+    score += savingsScore;
+    factors.push({ name: 'Savings Rate', score: Math.round(savingsScore), maxScore: 25 });
 
-    // Debt management factor (25 points)
-    const creditAccounts = accounts.filter(acc => acc.type === 'credit');
-    const totalDebt = Math.abs(creditAccounts.reduce((sum, acc) => sum + acc.balance, 0));
-    const debtRatio = monthlyIncome > 0 ? (totalDebt / monthlyIncome) : 0;
-    
-    if (debtRatio === 0) {
-      score += 25;
-      factors.push({ name: 'Debt Management', score: 25, maxScore: 25 });
-    } else if (debtRatio <= 0.3) {
-      const debtScore = (1 - (debtRatio / 0.3)) * 25;
-      score += debtScore;
-      factors.push({ name: 'Debt Management', score: Math.round(debtScore), maxScore: 25 });
-    } else {
-      factors.push({ name: 'Debt Management', score: 0, maxScore: 25 });
-    }
+    // Debt management (25 pts)
+    const totalDebt = Math.abs(accounts.filter(a => a.type === 'credit').reduce((s, a) => s + a.balance, 0));
+    const debtRatio = monthlyIncome > 0 ? totalDebt / monthlyIncome : 0;
+    const debtScore = debtRatio === 0 ? 25 : debtRatio <= 0.3 ? (1 - debtRatio / 0.3) * 25 : 0;
+    score += debtScore;
+    factors.push({ name: 'Debt Management', score: Math.round(debtScore), maxScore: 25 });
 
-    // Goal progress factor (25 points)
-    const avgGoalProgress = goals.reduce((sum, goal) => {
-      return sum + (goal.currentAmount / goal.targetAmount);
-    }, 0) / goals.length;
-    
+    // Goal progress (25 pts)
+    const avgGoalProgress = goals.length > 0
+      ? goals.reduce((s, g) => s + (g.currentAmount / (g.targetAmount || 1)), 0) / goals.length
+      : 0;
     const goalScore = Math.min(25, avgGoalProgress * 25);
     score += goalScore;
     factors.push({ name: 'Goal Progress', score: Math.round(goalScore), maxScore: 25 });
 
-    return {
-      score: Math.round(score),
-      factors,
-      maxScore: 100
-    };
+    return { score: Math.round(score), factors, maxScore: 100 };
   }
 
-  // Update local cache
   updateCache(dataType, data) {
     this.cache.set(dataType, data);
     this.lastFetch.set(dataType, new Date());
   }
 
-  // Clear cache
   clearCache(dataType = null) {
     if (dataType) {
       this.cache.delete(dataType);
@@ -413,62 +399,22 @@ class DataManager {
     }
   }
 
-  // Sync with Google Sheets (placeholder for real implementation)
   async syncWithGoogleSheets() {
     try {
-      // This would implement actual Google Sheets API calls
       Utils.showLoading();
-      
-      // Simulate sync delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Force refresh all data
-      const results = await Promise.all([
-        this.getAccounts(true),
-        this.getTransactions(true),
-        this.getBills(true),
-        this.getGoals(true)
-      ]);
-      
+      this.clearCache();
+      const success = await this.fetchFromGAS();
       Utils.hideLoading();
       
-      const allSuccessful = results.every(result => result.success);
-      return Utils.handleSuccess(null, allSuccessful ? 'Data synced successfully' : 'Partial sync completed');
-      
+      return success
+        ? Utils.handleSuccess(null, 'Data synced from Google Sheets')
+        : Utils.handleSuccess(null, 'Using cached/mock data (sync unavailable)');
     } catch (error) {
       Utils.hideLoading();
       return Utils.handleError(error, 'syncing with Google Sheets');
     }
   }
 
-  // Wake up BAI with financial data update
-  async wakeBAI(updateData) {
-    try {
-      // This would send a webhook to OpenClaw to wake up BAI
-      const response = await fetch(CONFIG.OPENCLAW.WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          source: 'finance-tracker',
-          type: 'data-update',
-          data: updateData,
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      if (response.ok) {
-        return Utils.handleSuccess(null, 'BAI notified successfully');
-      } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      return Utils.handleError(error, 'waking BAI');
-    }
-  }
-
-  // Export data for backup or analysis
   exportData(format = 'json') {
     const exportData = {
       accounts: this.cache.get('accounts'),
@@ -479,14 +425,11 @@ class DataManager {
     };
 
     if (format === 'csv') {
-      // Convert to CSV format (simplified)
       const transactions = this.cache.get('transactions') || [];
-      const csvContent = 'Date,Description,Amount,Category,Account\n' +
-        transactions.map(t => 
+      return 'Date,Description,Amount,Category,Account\n' +
+        transactions.map(t =>
           `${Utils.formatDate(t.date)},${t.description},${t.amount},${t.category},${t.account}`
         ).join('\n');
-      
-      return csvContent;
     }
 
     return JSON.stringify(exportData, null, 2);

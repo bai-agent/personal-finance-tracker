@@ -556,6 +556,57 @@ function updateGoalProgress() {
   });
 }
 
+// ==================== WEB APP ENDPOINT ====================
+
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.openById('1KIzq9VaJWqyFSIUk8J0GB43Yp1sYVY86K3M30_q73xc');
+    var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : 'all';
+    var result;
+    
+    if (action === 'all') {
+      result = {
+        accounts: getSheetDataById(ss, CONFIG.SHEETS.ACCOUNTS),
+        transactions: getSheetDataById(ss, CONFIG.SHEETS.TRANSACTIONS),
+        wages: getSheetDataById(ss, CONFIG.SHEETS.WAGES),
+        bills: getSheetDataById(ss, CONFIG.SHEETS.BILLS),
+        savings: getSheetDataById(ss, CONFIG.SHEETS.SAVINGS),
+        projections: getSheetDataById(ss, CONFIG.SHEETS.PROJECTIONS),
+        history: getSheetDataById(ss, CONFIG.SHEETS.HISTORY),
+        dashboard: getSheetDataById(ss, CONFIG.SHEETS.DASHBOARD),
+        timestamp: new Date().toISOString()
+      };
+    } else {
+      var sheetName = CONFIG.SHEETS[action.toUpperCase()] || action;
+      result = {
+        data: getSheetDataById(ss, sheetName),
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    return ContentService
+      .createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getSheetDataById(ss, name) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet || sheet.getLastRow() <= 1) return [];
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var data = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  return data.map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+}
+
 // ==================== DATA EXPORT ====================
 
 function exportDataForBAI() {

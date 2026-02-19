@@ -81,18 +81,17 @@ class FinanceApp {
     console.log('📊 Loading initial financial data...');
     
     try {
-      // Load all required data in parallel
-      const [dashboardResult, accountsResult, transactionsResult] = await Promise.all([
-        dataManager.getDashboardData(),
-        dataManager.getAccounts(),
-        dataManager.getTransactions()
-      ]);
+      // First, try to fetch live data from Google Sheets
+      await dataManager.fetchFromGAS();
+      
+      // Then load dashboard
+      const dashboardResult = await dataManager.getDashboardData();
 
       if (!dashboardResult.success) {
         throw new Error('Failed to load dashboard data');
       }
 
-      console.log('✅ Initial data loaded successfully');
+      console.log(`✅ Initial data loaded (source: ${dataManager.dataSource})`);
       this.state.lastSync = new Date();
       
     } catch (error) {
