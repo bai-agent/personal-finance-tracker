@@ -16,7 +16,7 @@ const CONFIG = {
 
   // Google Apps Script Web App
   GAS_WEBAPP: {
-    URL: 'https://script.google.com/a/macros/babybloomsydney.com.au/s/AKfycbwuUJygCrC7HrhC8TVGefIf6mYgRwB7QplZ_UOjQuYp94iYPKkCCx9QpLZ1yT4TXiS-/exec'
+    URL: 'https://script.google.com/a/macros/babybloomsydney.com.au/s/AKfycbzyF9l0RlzH4N-syW_wRQ2xM6edLQ7Lclc6yC_Ya9BYrnAyjDCl-U8qXjsMK21GeU58/exec'
   },
 
   // OpenClaw webhook configuration
