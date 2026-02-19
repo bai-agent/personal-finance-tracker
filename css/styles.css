@@ -389,6 +389,11 @@ body{
 .spinner-dot:nth-child(3){animation-delay:.3s}
 @keyframes spinPulse{0%,80%,100%{transform:scale(.4);opacity:.4}40%{transform:scale(1);opacity:1}}
 .spinner-ring{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:32px auto}
+.spinner-inline{display:inline-flex;align-items:center;gap:4px;vertical-align:middle}
+.spinner-inline .spinner-dot{width:6px;height:6px;border-radius:50%;background:var(--dim);animation:spinPulse .8s ease-in-out infinite}
+.spinner-inline .spinner-dot:nth-child(2){animation-delay:.15s}
+.spinner-inline .spinner-dot:nth-child(3){animation-delay:.3s}
+.spinner-inline.sm .spinner-dot{width:4px;height:4px}
 
 /* ===== FADE IN ===== */
 .fade-in{animation:fadeIn .3s ease}

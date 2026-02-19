@@ -39,21 +39,21 @@
 
   <!-- OVERVIEW -->
   <div id="overview" class="pg on">
-    <div class="hero">
+    <div class="hero" id="heroSection">
       <div class="hero-lbl">Total Balance</div>
-      <div class="hero-amt" id="totalBal">$0.00</div>
+      <div class="hero-amt" id="totalBal"><div class="spinner-inline"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div>
       <div class="hero-sub">across all accounts</div>
     </div>
-    <div class="stats">
-      <div class="stat g"><div class="stat-lbl">Income</div><div class="stat-val" id="sInc">$0</div></div>
-      <div class="stat r"><div class="stat-lbl">Expenses</div><div class="stat-val" id="sExp">$0</div></div>
-      <div class="stat b"><div class="stat-lbl">Saved</div><div class="stat-val" id="sSav">--%</div></div>
+    <div class="stats" id="statsSection">
+      <div class="stat g"><div class="stat-lbl">Income</div><div class="stat-val" id="sInc"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
+      <div class="stat r"><div class="stat-lbl">Expenses</div><div class="stat-val" id="sExp"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
+      <div class="stat b"><div class="stat-lbl">Saved</div><div class="stat-val" id="sSav"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
     </div>
-    <div class="ppl">
-      <div class="pcard"><h4>👤 Bailey</h4><div class="prow"><span>Wages</span><span id="bW">$0</span></div><div class="prow"><span>Spending</span><span id="bS">$0</span></div></div>
-      <div class="pcard"><h4>👤 Katie</h4><div class="prow"><span>Wages</span><span id="kW">$0</span></div><div class="prow"><span>Spending</span><span id="kS">$0</span></div></div>
+    <div class="ppl" id="pplSection">
+      <div class="pcard"><h4>👤 Bailey</h4><div class="prow"><span>Commonwealth</span><span id="bW"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Starling</span><span id="bS"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div></div>
+      <div class="pcard"><h4>👤 Katie</h4><div class="prow"><span>Commonwealth</span><span id="kW"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Starling</span><span id="kS"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div></div>
     </div>
-    <div class="pcard wide"><h4>🤝 Joint</h4><div class="pgrid"><div class="prow"><span>Bills</span><span id="jB">$0</span></div><div class="prow"><span>Savings</span><span id="jSv">$0</span></div><div class="prow"><span>Food</span><span id="jF">$0</span></div><div class="prow"><span>Credit</span><span id="jC">$0</span></div></div></div>
+    <div class="pcard wide"><h4>🤝 Joint</h4><div class="pgrid"><div class="prow"><span>Commonwealth</span><span id="jB"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Savings</span><span id="jSv"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Starling</span><span id="jF"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Credit</span><span id="jC"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div></div></div>
 
     <!-- Overview Charts -->
     <div id="ovPeriodToggle" style="padding:14px 0 0"></div>
@@ -90,7 +90,7 @@
       <div class="ss" id="stmtSum"></div>
       <div class="pnl-bd" id="stmtList"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div>
     </div>
-    <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w"><canvas id="balChart"></canvas></div></div>
+    <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w" id="balChartWrap"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div><canvas id="balChart" style="display:none"></canvas></div></div>
   </div>
 
   <!-- WAGES -->

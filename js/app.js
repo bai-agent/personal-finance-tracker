@@ -273,6 +273,7 @@
     // Use expandable transaction list
     FinanceViews.renderTransactionList('stmtList', data, dm);
     FinanceCharts.balanceLine('balChart', data, dm);
+    var bw=document.getElementById('balChartWrap');if(bw){var bs=bw.querySelector('.spinner');if(bs)bs.style.display='none';var bc=bw.querySelector('canvas');if(bc)bc.style.display='';}
   }
 
   function trRow(e){
