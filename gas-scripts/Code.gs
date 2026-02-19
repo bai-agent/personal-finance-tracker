@@ -232,7 +232,7 @@ function createSheet(ss, name, headers) {
 
 function formatSheets(ss) {
   var txSheet = ss.getSheetByName(TABS.TRANSACTIONS);
-  if (ledger) {
+  if (txSheet) {
     txSheet.getRange('C2:D10000').setNumberFormat('#,##0.00');
   }
   var acc = ss.getSheetByName(TABS.ACCOUNTS);
