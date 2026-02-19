@@ -158,20 +158,16 @@
     var filtered = FinanceViews.filterByPeriod(l, globalPeriod);
     var tot=a.reduce((s,x)=>s+x.balance,0);
     var h=document.getElementById('totalBal');h.textContent=dm.formatCurrency(tot);h.className='hero-amt '+(tot>=0?'pos':'neg');
-    // This Week income
-    var weekTxns = FinanceViews.filterByPeriod(l, 7);
-    var weekInc = weekTxns.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
-    // This Month expenses
-    var monthTxns = FinanceViews.filterByPeriod(l, 30);
-    var monthExp = Math.abs(monthTxns.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
-    // Savings rate from period
+    // All stats use global period
     var inc = filtered.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
     var exp = Math.abs(filtered.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
     var savRate = inc>0?((inc-exp)/inc*100).toFixed(0):'--';
-    if(weekInc===0 && l.length===0){weekInc=dm.getDashboardMetric('Monthly Income');}
-    if(monthExp===0 && l.length===0){monthExp=dm.getDashboardMetric('Monthly Expenses');}
-    document.getElementById('sInc').textContent=dm.formatCurrency(weekInc);
-    document.getElementById('sExp').textContent=dm.formatCurrency(monthExp);
+    if(inc===0 && l.length===0){inc=dm.getDashboardMetric('Monthly Income');}
+    if(exp===0 && l.length===0){exp=dm.getDashboardMetric('Monthly Expenses');}
+    document.getElementById('sIncLbl').textContent='Income ('+globalPeriod+'D)';
+    document.getElementById('sExpLbl').textContent='Spent ('+globalPeriod+'D)';
+    document.getElementById('sInc').textContent=dm.formatCurrency(inc);
+    document.getElementById('sExp').textContent=dm.formatCurrency(exp);
     document.getElementById('sSav').textContent=savRate+'%';
     var b=n=>{var x=a.find(x=>x.name===n);return dm.formatCurrency(x?x.balance:0)};
     document.getElementById('bW').textContent=b('BW Personal (Commonwealth)');

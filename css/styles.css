@@ -468,3 +468,16 @@ body{
 .recur-right{text-align:right;flex-shrink:0;margin-left:10px}
 .recur-amt{font-size:.85rem;font-weight:800;color:var(--red)}
 .recur-next{font-size:.58rem;color:var(--dim);margin-top:2px}
+
+/* Collapsible account groups */
+.recur-group{border-radius:10px;overflow:hidden;background:var(--card2);margin-bottom:8px}
+.recur-group-hd{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.recur-group-left{display:flex;align-items:center;gap:8px}
+.recur-group-count{font-size:.6rem;color:var(--dim)}
+.recur-group-right{display:flex;align-items:center;gap:8px}
+.recur-group-total{font-size:.8rem;font-weight:700;color:var(--red)}
+.recur-chev{font-size:.6rem;color:var(--dim);transition:transform .2s}
+.recur-group.open .recur-chev{transform:rotate(180deg)}
+.recur-group-body{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.recur-group.open .recur-group-body{max-height:600px}
+.recur-group-body .recur-row{border-top:1px solid rgba(255,255,255,.04);margin:0;border-radius:0;background:transparent;padding:10px 14px}

@@ -394,55 +394,71 @@ const FinanceViews = {
       return;
     }
 
-    // Sort: Joint Commonwealth first, then by next due date
-    var sorted = [...bills].sort((a, b) => {
-      var aJoint = (a['Account'] || '').indexOf('Joint') >= 0 && (a['Account'] || '').indexOf('Commonwealth') >= 0 ? 0 : 1;
-      var bJoint = (b['Account'] || '').indexOf('Joint') >= 0 && (b['Account'] || '').indexOf('Commonwealth') >= 0 ? 0 : 1;
-      if (aJoint !== bJoint) return aJoint - bJoint;
-      return new Date(a['Next Due Date']) - new Date(b['Next Due Date']);
-    });
-
-    // Recurring payments full-width tile
+    // Group bills by account, Joint Commonwealth first
+    var byAccount = {};
     var totalMonthly = 0;
-    var recurringHtml = sorted.map(b => {
+    bills.forEach(b => {
+      var acct = b['Account'] || 'Unknown';
+      if (!byAccount[acct]) byAccount[acct] = [];
+      byAccount[acct].push(b);
       var c = b['Currency'] || 'AUD';
       var a = Math.abs(parseFloat(b['Amount'])) || 0;
       var converted = dm.convert(a, c);
-      var freq = b['Frequency'] || b['Category'] || 'Monthly';
-      // Estimate monthly cost
+      var freq = b['Frequency'] || 'Monthly';
       if (freq.toLowerCase().includes('week')) totalMonthly += converted * 4.33;
       else if (freq.toLowerCase().includes('fortnight')) totalMonthly += converted * 2.17;
       else totalMonthly += converted;
-      var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
-      var st = b['Status'] || 'Active';
-      var stCls = st === 'Cancelled' ? 'cancelled' : st === 'Overdue' ? 'overdue' : 'active';
-      var nextDate = formatDate(b['Next Due Date']);
-      return `<div class="recur-row">
-        <div class="recur-left">
-          <div class="recur-name">${b['Bill Name'] || ''}</div>
-          <div class="recur-meta">
-            <span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span>
-            <span class="recur-freq">${freq}</span>
-            <span class="recur-status ${stCls}">${st}</span>
+    });
+
+    // Sort account keys: Joint Commonwealth first, then others
+    var acctKeys = Object.keys(byAccount).sort((a, b) => {
+      var aJoint = a.indexOf('Joint') >= 0 && a.indexOf('Commonwealth') >= 0 ? 0 : 1;
+      var bJoint = b.indexOf('Joint') >= 0 && b.indexOf('Commonwealth') >= 0 ? 0 : 1;
+      return aJoint - bJoint || a.localeCompare(b);
+    });
+
+    var groupsHtml = acctKeys.map((acct, idx) => {
+      var items = byAccount[acct].sort((a, b) => new Date(a['Next Due Date']) - new Date(b['Next Due Date']));
+      var acctColor = FinanceCharts.getAccountColor(acct);
+      var shortName = FinanceCharts.getShortName(acct);
+      var acctTotal = items.reduce((s, b) => {
+        var c = b['Currency'] || 'AUD';
+        var a = Math.abs(parseFloat(b['Amount'])) || 0;
+        return s + dm.convert(a, c);
+      }, 0);
+      var rowsHtml = items.map(b => {
+        var c = b['Currency'] || 'AUD';
+        var a = Math.abs(parseFloat(b['Amount'])) || 0;
+        var converted = dm.convert(a, c);
+        var freq = b['Frequency'] || 'Monthly';
+        var st = b['Status'] || 'Active';
+        var stCls = st === 'Cancelled' ? 'cancelled' : st === 'Overdue' ? 'overdue' : 'active';
+        return `<div class="recur-row">
+          <div class="recur-left">
+            <div class="recur-name">${b['Bill Name'] || ''}</div>
+            <div class="recur-meta">
+              <span class="recur-freq">${freq}</span>
+              <span class="recur-status ${stCls}">${st}</span>
+            </div>
           </div>
+          <div class="recur-right">
+            <div class="recur-amt">${dm.formatCurrency(converted)}</div>
+            <div class="recur-next">Next: ${formatDate(b['Next Due Date'])}</div>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="recur-group${idx === 0 ? ' open' : ''}">
+        <div class="recur-group-hd" data-acct="${acct}">
+          <div class="recur-group-left"><span class="acct-tag" style="background:${acctColor}">${shortName}</span><span class="recur-group-count">${items.length} bill${items.length !== 1 ? 's' : ''}</span></div>
+          <div class="recur-group-right"><span class="recur-group-total">${dm.formatCurrency(acctTotal)}</span><span class="recur-chev">▾</span></div>
         </div>
-        <div class="recur-right">
-          <div class="recur-amt">${dm.formatCurrency(converted)}</div>
-          <div class="recur-next">Next: ${nextDate}</div>
-        </div>
+        <div class="recur-group-body">${rowsHtml}</div>
       </div>`;
     }).join('');
 
     var cal = this._buildCalendarHtml(bills, this.calendarMonth, false);
 
     el.innerHTML = `
-      <div class="recur-tile">
-        <div class="recur-header">
-          <h3>🔄 Recurring Payments</h3>
-          <div class="recur-total">~${dm.formatCurrency(totalMonthly)}<span>/mo</span></div>
-        </div>
-        <div class="recur-list">${recurringHtml}</div>
-      </div>
       <div style="padding:14px 18px" id="billsCalWrap">
         <div class="cal-month">
           <button class="cal-nav" id="bcPrev">‹</button>
@@ -450,6 +466,13 @@ const FinanceViews = {
           <button class="cal-nav" id="bcNext">›</button>
         </div>
         <div class="cal-grid">${cal.calCells}</div>
+      </div>
+      <div class="recur-tile">
+        <div class="recur-header">
+          <h3>🔄 Recurring Payments</h3>
+          <div class="recur-total">~${dm.formatCurrency(totalMonthly)}<span>/mo</span></div>
+        </div>
+        <div class="recur-list">${groupsHtml}</div>
       </div>
     `;
 
@@ -463,6 +486,13 @@ const FinanceViews = {
       if (self.calendarMonth.month > 11) { self.calendarMonth.month = 0; self.calendarMonth.year++; }
       self.renderBillsCalendar(bills);
     };
+
+    // Wire collapsible account groups
+    el.querySelectorAll('.recur-group-hd').forEach(hd => {
+      hd.onclick = () => {
+        hd.parentElement.classList.toggle('open');
+      };
+    });
 
     var wrap = document.getElementById('billsCalWrap');
     wrap.querySelectorAll('.cal-cell.has-bill').forEach(cell => {
