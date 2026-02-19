@@ -137,8 +137,10 @@ function formatSheets(ss) {
 // ==================== TRIGGERS ====================
 
 function setupTriggers() {
+  // Remove existing triggers
   ScriptApp.getProjectTriggers().forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('onEdit').onEdit().create();
+  // onEdit is a simple trigger — it runs automatically, no need to install it.
+  // Only install the daily time-driven trigger.
   ScriptApp.newTrigger('dailyProcessing').timeBased().everyDays(1).atHour(9).create();
 }
 
