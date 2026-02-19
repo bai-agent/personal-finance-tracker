@@ -67,7 +67,7 @@
     if(t==='wages')FinanceViews.renderWages(dm.cache.wages||[]);
     if(t==='bills')FinanceViews.renderBillsCalendar(dm.cache.bills||[]);
     if(t==='savings')FinanceViews.renderSavings(dm.cache.savings||[], dm.cache.history||[]);
-    if(t==='projections')FinanceViews.renderProjections(dm.cache.projections||[], dm.cache.bills||[], dm.getAccounts());
+    if(t==='projections')FinanceViews.renderProjections(dm.cache.projections||[], dm.cache.bills||[], dm.getAccounts(), globalPeriod);
     if(t==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
   }
 
@@ -82,7 +82,7 @@
       if(tab==='wages')FinanceViews.renderWages(dm.cache.wages||[]);
       if(tab==='bills')FinanceViews.renderBillsCalendar(dm.cache.bills||[]);
       if(tab==='savings')FinanceViews.renderSavings(dm.cache.savings||[], dm.cache.history||[]);
-      if(tab==='projections')FinanceViews.renderProjections(dm.cache.projections||[], dm.cache.bills||[], dm.getAccounts());
+      if(tab==='projections')FinanceViews.renderProjections(dm.cache.projections||[], dm.cache.bills||[], dm.getAccounts(), globalPeriod);
       if(tab==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
     };
   }
@@ -99,7 +99,7 @@
         if(tab==='wages')FinanceViews.renderWages(dm.cache.wages||[]);
         if(tab==='bills')FinanceViews.renderBillsCalendar(dm.cache.bills||[]);
         if(tab==='savings')FinanceViews.renderSavings(dm.cache.savings||[], dm.cache.history||[]);
-        if(tab==='projections')FinanceViews.renderProjections(dm.cache.projections||[], dm.cache.bills||[], dm.getAccounts());
+        if(tab==='projections')FinanceViews.renderProjections(dm.cache.projections||[], dm.cache.bills||[], dm.getAccounts(), globalPeriod);
         if(tab==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
       });
     });
@@ -193,36 +193,10 @@
     // Mini calendar
     try{FinanceViews.renderMiniCalendar(dm.cache.bills || [])}catch(e){console.error('miniCal:',e)}
 
-    // Upcoming bills list
-    try{renderUpcomingBills()}catch(e){console.error('upcomingBills:',e)}
+    // Upcoming bills now integrated into mini calendar
 
     // Trends & Analysis
     try{FinanceViews.renderTrendsAnalysis(l, dm.cache.history || [])}catch(e){console.error('trends:',e)}
-  }
-
-  function renderUpcomingBills() {
-    var el = document.getElementById('upcomingBills');
-    if (!el) return;
-    var bills = dm.cache.bills || [];
-    var now = new Date();
-    var twoWeeks = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-    var upcoming = bills.filter(b => {
-      var d = new Date(b['Next Due Date']);
-      return d >= now && d <= twoWeeks;
-    }).sort((a, b) => new Date(a['Next Due Date']) - new Date(b['Next Due Date']));
-
-    if (!upcoming.length) {
-      el.innerHTML = '<div class="empty">No bills in the next 2 weeks 🎉</div>';
-      return;
-    }
-    el.innerHTML = upcoming.map(b => {
-      var c = b['Currency'] || 'AUD';
-      var a = Math.abs(parseFloat(b['Amount'])) || 0;
-      var d = new Date(b['Next Due Date']);
-      var days = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
-      var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
-      return `<div class="bill-list-item"><div class="bill-left"><div class="bill-name">${b['Bill Name'] || ''}</div><div class="bill-meta">${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days'} · ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span></div></div><div class="bill-right"><div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div></div></div>`;
-    }).join('');
   }
 
   // ACCOUNTS

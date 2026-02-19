@@ -349,7 +349,39 @@ const FinanceViews = {
     var el = document.getElementById('ovMiniCal');
     if (!el) return;
     var self = this;
+    var dm = this.dm;
     var cal = this._buildCalendarHtml(bills, this.miniCalMonth, true);
+
+    // Build upcoming bills list (next 14 days) integrated into calendar
+    var now = new Date();
+    var twoWeeks = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    var upcoming = (bills || []).filter(b => {
+      var d = new Date(b['Next Due Date']);
+      return d >= now && d <= twoWeeks;
+    }).sort((a, b) => new Date(a['Next Due Date']) - new Date(b['Next Due Date']));
+
+    var upcomingHtml = '';
+    if (upcoming.length) {
+      upcomingHtml = '<div class="cal-upcoming-list" id="mcUpcoming">';
+      var prevDateStr = '';
+      upcoming.forEach(b => {
+        var c = b['Currency'] || 'AUD';
+        var a = Math.abs(parseFloat(b['Amount'])) || 0;
+        var d = new Date(b['Next Due Date']);
+        var days = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+        var dateLabel = d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
+        var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
+        // Group header by date
+        var dateStr = d.toISOString().slice(0, 10);
+        var headerHtml = '';
+        if (dateStr !== prevDateStr) {
+          headerHtml = '<div class="cal-upcoming-date">' + dateLabel + '</div>';
+          prevDateStr = dateStr;
+        }
+        upcomingHtml += headerHtml + '<div class="bill-list-item" data-cal-date="' + dateStr + '"><div class="bill-left"><div class="bill-name">' + (b['Bill Name'] || '') + '</div><div class="bill-meta"><span class="acct-tag" style="background:' + acctColor + '">' + FinanceCharts.getShortName(b['Account'] || '') + '</span> · ' + (b['Frequency'] || 'Monthly') + '</div></div><div class="bill-right"><div class="bill-amt">' + dm.formatCurrency(dm.convert(a, c)) + '</div><div class="bill-status">' + (days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days') + '</div></div></div>';
+      });
+      upcomingHtml += '</div>';
+    }
 
     el.innerHTML = `<div style="padding:14px 18px">
       <div class="cal-month">
@@ -358,7 +390,7 @@ const FinanceViews = {
         <button class="cal-nav" id="mcNext">›</button>
       </div>
       <div class="cal-grid">${cal.calCells}</div>
-    </div>`;
+    </div>${upcomingHtml}`;
 
     document.getElementById('mcPrev').onclick = () => {
       self.miniCalMonth.month--;
@@ -371,15 +403,22 @@ const FinanceViews = {
       self.renderMiniCalendar(bills);
     };
 
+    // Calendar date click highlights corresponding bills
     el.querySelectorAll('.cal-cell.has-bill').forEach(cell => {
       cell.onclick = () => {
         var dateStr = cell.dataset.calDate;
-        var existing = el.querySelector('.cal-detail-panel');
-        if (existing && existing.dataset.date === dateStr) { existing.remove(); return; }
-        if (existing) existing.remove();
-        self._renderCalendarDetailPanel(dateStr, bills, el);
-        var panel = el.querySelector('.cal-detail-panel');
-        if (panel) panel.dataset.date = dateStr;
+        // Toggle highlight on calendar
+        el.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('cal-selected'));
+        cell.classList.add('cal-selected');
+        // Highlight matching bills in the list
+        el.querySelectorAll('.bill-list-item').forEach(item => {
+          if (item.dataset.calDate === dateStr) {
+            item.classList.add('bill-highlight');
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } else {
+            item.classList.remove('bill-highlight');
+          }
+        });
       };
     });
   },
@@ -578,61 +617,124 @@ const FinanceViews = {
   },
 
   // ===== PROJECTIONS =====
-  renderProjections(projections, bills, accounts) {
+  renderProjections(projections, bills, accounts, periodDays) {
     var dm = this.dm;
     var el = document.getElementById('projContent');
     if (!el) return;
+    var period = periodDays || 30;
 
     var accts = dm.getAccounts();
     var now = new Date();
     var savings = dm.cache.savings || [];
+    var wages = dm.cache.wages || [];
 
-    var billsNext7 = [], billsNext14 = [], billsNext30 = [];
+    // Filter bills by selected period
+    var billsInPeriod = [];
+    var billsNext7 = [];
     (bills || []).forEach(b => {
       var d = new Date(b['Next Due Date']);
       var diff = (d - now) / (1000 * 60 * 60 * 24);
       if (diff < 0) diff = 0;
       var c = b['Currency'] || 'AUD';
       var amt = dm.convert(Math.abs(parseFloat(b['Amount']) || 0), c);
-      var entry = { ...b, convertedAmt: amt, daysUntil: diff, dueDate: d };
-      if (diff <= 30) { billsNext30.push(entry); }
-      if (diff <= 14) { billsNext14.push(entry); }
+      var entry = { ...b, convertedAmt: amt, daysUntil: Math.round(diff), dueDate: d };
+      if (diff <= period) { billsInPeriod.push(entry); }
       if (diff <= 7) { billsNext7.push(entry); }
     });
 
+    var totalPeriod = billsInPeriod.reduce((s, b) => s + b.convertedAmt, 0);
     var total7 = billsNext7.reduce((s, b) => s + b.convertedAmt, 0);
-    var total14 = billsNext14.reduce((s, b) => s + b.convertedAmt, 0);
-    var total30 = billsNext30.reduce((s, b) => s + b.convertedAmt, 0);
+
+    // Wage forecasting — detect regular income patterns
+    var wageForecasts = this._forecastWages(wages, dm, period);
 
     var summaryHtml = `
       <div class="advisor-summary">
         <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total7)}</div><div class="advisor-stat-lbl">Next 7 days</div><div class="advisor-stat-count">${billsNext7.length} bill${billsNext7.length !== 1 ? 's' : ''}</div></div>
-        <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total14)}</div><div class="advisor-stat-lbl">Next 14 days</div><div class="advisor-stat-count">${billsNext14.length} bill${billsNext14.length !== 1 ? 's' : ''}</div></div>
-        <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total30)}</div><div class="advisor-stat-lbl">Next 30 days</div><div class="advisor-stat-count">${billsNext30.length} bill${billsNext30.length !== 1 ? 's' : ''}</div></div>
+        <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(totalPeriod)}</div><div class="advisor-stat-lbl">Next ${period} days</div><div class="advisor-stat-count">${billsInPeriod.length} bill${billsInPeriod.length !== 1 ? 's' : ''}</div></div>
+        ${wageForecasts.totalExpected > 0 ? '<div class="advisor-stat"><div class="advisor-stat-val wage-forecast-val">' + dm.formatCurrency(wageForecasts.totalExpected) + '</div><div class="advisor-stat-lbl">Projected Income</div><div class="advisor-stat-count">next ' + period + ' days</div></div>' : ''}
       </div>`;
 
+    // Bills coming up in next 7 days — detailed breakdown
+    var next7Html = '';
+    if (billsNext7.length) {
+      next7Html = '<div class="proj-7day-bills"><div class="proj-section-title">📋 Bills Due This Week</div>';
+      billsNext7.sort((a, b) => a.daysUntil - b.daysUntil).forEach(b => {
+        var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
+        var dayLabel = b.daysUntil <= 0 ? '<span class="proj-overdue">OVERDUE</span>' : b.daysUntil <= 1 ? '<span class="proj-tomorrow">Tomorrow</span>' : b.dueDate.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+        next7Html += `<div class="proj-bill-detail"><div class="proj-bill-left"><div class="proj-bill-name">${b['Bill Name'] || ''}</div><div class="proj-bill-meta">${dayLabel} · <span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span></div></div><div class="proj-bill-amt">${dm.formatCurrency(b.convertedAmt)}</div></div>`;
+      });
+      next7Html += '</div>';
+    } else {
+      next7Html = '<div class="proj-7day-bills"><div class="proj-section-title">📋 Bills Due This Week</div><div class="advisor-ok">✅ No bills due in the next 7 days</div></div>';
+    }
+
+    // Wage forecast section
+    var wageForecastHtml = '';
+    if (wageForecasts.forecasts.length) {
+      wageForecastHtml = '<div class="proj-wage-forecast"><div class="proj-section-title">💰 Projected Wages</div>';
+      wageForecasts.forecasts.forEach(f => {
+        wageForecastHtml += `<div class="proj-wage-item"><div class="proj-wage-left"><div class="proj-wage-person">${f.user}</div><div class="proj-wage-meta">Every ${f.frequency} · avg ${dm.formatCurrency(f.avgAmount)} · next: ${f.nextExpected.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}</div></div><div class="proj-wage-amt">${dm.formatCurrency(f.projectedTotal)}</div></div>`;
+      });
+      if (wageForecasts.unconfirmed.length) {
+        wageForecastHtml += '<div class="proj-wage-note">⚠️ Unconfirmed regular income detected: ' + wageForecasts.unconfirmed.join(', ') + ' — is this a regular wage?</div>';
+      }
+      wageForecastHtml += '</div>';
+    }
+
+    // "Where to move money" — focus on 7-day window (weekly pay cycle)
     var billsByAcct = {};
-    billsNext30.forEach(b => {
+    billsNext7.forEach(b => {
       var acct = b['Account'] || 'Joint (Commonwealth)';
       if (!billsByAcct[acct]) billsByAcct[acct] = { total: 0, bills: [] };
       billsByAcct[acct].total += b.convertedAmt;
       billsByAcct[acct].bills.push(b);
     });
 
+    // Also check full period for longer-term planning
+    var billsByAcctPeriod = {};
+    billsInPeriod.forEach(b => {
+      var acct = b['Account'] || 'Joint (Commonwealth)';
+      if (!billsByAcctPeriod[acct]) billsByAcctPeriod[acct] = { total: 0, bills: [] };
+      billsByAcctPeriod[acct].total += b.convertedAmt;
+      billsByAcctPeriod[acct].bills.push(b);
+    });
+
     var transfers = [];
+    // Priority: 7-day shortfalls first
     Object.entries(billsByAcct).forEach(([acctName, data]) => {
       var acct = accts.find(a => a.name === acctName);
       if (!acct) return;
       if (acct.balance < data.total) {
         var shortfall = data.total - acct.balance;
         var nearestBill = data.bills.sort((a, b) => a.daysUntil - b.daysUntil)[0];
-        var urgency = nearestBill.daysUntil <= 0 ? 'overdue' : nearestBill.daysUntil <= 7 ? 'urgent' : nearestBill.daysUntil <= 14 ? 'soon' : 'planned';
+        var urgency = nearestBill.daysUntil <= 0 ? 'overdue' : nearestBill.daysUntil <= 2 ? 'urgent' : 'soon';
         var surplus = accts.filter(a => a.name !== acctName && a.balance > shortfall).sort((a, b) => b.balance - a.balance);
+        var dueLabel = nearestBill.daysUntil <= 0 ? 'OVERDUE' : nearestBill.daysUntil <= 1 ? 'tomorrow' : 'by ' + nearestBill.dueDate.toLocaleDateString('en-AU', { weekday: 'long' });
+        var billDetail = data.bills.map(b => b['Bill Name'] + ' (' + dm.formatCurrency(b.convertedAmt) + ')').join(', ');
         if (surplus.length) {
-          var dueLabel = nearestBill.daysUntil <= 0 ? 'OVERDUE' : nearestBill.daysUntil <= 1 ? 'tomorrow' : 'by ' + nearestBill.dueDate.toLocaleDateString('en-AU', { weekday: 'long' });
-          transfers.push({ from: surplus[0].name, to: acctName, amount: shortfall, reason: `Cover ${data.bills.length} upcoming bill${data.bills.length > 1 ? 's' : ''} (${dm.formatCurrency(data.total)} due)`, urgency, deadline: dueLabel, billNames: data.bills.map(b => b['Bill Name']).join(', ') });
+          transfers.push({ from: surplus[0].name, to: acctName, amount: shortfall, reason: `Cover this week's bills: ${billDetail}`, urgency, deadline: dueLabel, billNames: data.bills.map(b => b['Bill Name']).join(', '), priority: 1 });
         } else {
-          transfers.push({ from: null, to: acctName, amount: shortfall, reason: `Shortfall for upcoming bills — no single account has enough funds!`, urgency: 'overdue', deadline: 'IMMEDIATE', billNames: data.bills.map(b => b['Bill Name']).join(', ') });
+          transfers.push({ from: null, to: acctName, amount: shortfall, reason: `Shortfall for this week: ${billDetail}`, urgency: 'overdue', deadline: 'IMMEDIATE', billNames: data.bills.map(b => b['Bill Name']).join(', '), priority: 1 });
+        }
+      }
+    });
+    // Then period shortfalls (excluding already covered 7-day ones)
+    Object.entries(billsByAcctPeriod).forEach(([acctName, data]) => {
+      if (billsByAcct[acctName]) return; // already handled in 7-day
+      var acct = accts.find(a => a.name === acctName);
+      if (!acct) return;
+      if (acct.balance < data.total) {
+        var shortfall = data.total - acct.balance;
+        var nearestBill = data.bills.sort((a, b) => a.daysUntil - b.daysUntil)[0];
+        var urgency = nearestBill.daysUntil <= 7 ? 'urgent' : nearestBill.daysUntil <= 14 ? 'soon' : 'planned';
+        var surplus = accts.filter(a => a.name !== acctName && a.balance > shortfall).sort((a, b) => b.balance - a.balance);
+        var dueLabel = nearestBill.daysUntil <= 1 ? 'tomorrow' : 'by ' + nearestBill.dueDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' });
+        var billDetail = data.bills.map(b => b['Bill Name'] + ' (' + dm.formatCurrency(b.convertedAmt) + ')').join(', ');
+        if (surplus.length) {
+          transfers.push({ from: surplus[0].name, to: acctName, amount: shortfall, reason: `Cover upcoming: ${billDetail}`, urgency, deadline: dueLabel, billNames: data.bills.map(b => b['Bill Name']).join(', '), priority: 2 });
+        } else {
+          transfers.push({ from: null, to: acctName, amount: shortfall, reason: `Shortfall for upcoming bills: ${billDetail}`, urgency: 'overdue', deadline: 'IMMEDIATE', billNames: data.bills.map(b => b['Bill Name']).join(', '), priority: 2 });
         }
       }
     });
@@ -655,11 +757,14 @@ const FinanceViews = {
         var bestSource = accts.filter(a => a.purpose !== 'Savings' && a.balance > 200).sort((a, b) => b.balance - a.balance);
         if (bestSource.length) {
           var suggestAmt = Math.min(remaining, bestSource[0].balance * 0.2);
-          transfers.push({ from: bestSource[0].name, to: 'Joint Saver (Commonwealth)', amount: Math.round(suggestAmt), reason: `Contribute to savings goals (${dm.formatCurrency(remaining)} remaining)`, urgency: 'planned', deadline: 'when convenient', billNames: 'Savings' });
+          transfers.push({ from: bestSource[0].name, to: 'Joint Saver (Commonwealth)', amount: Math.round(suggestAmt), reason: `Contribute to savings goals (${dm.formatCurrency(remaining)} remaining)`, urgency: 'planned', deadline: 'when convenient', billNames: 'Savings', priority: 3 });
         }
       }
       savingsHtml += '</div></div>';
     }
+
+    // Sort transfers by priority
+    transfers.sort((a, b) => (a.priority || 99) - (b.priority || 99));
 
     var transferHtml = '';
     if (transfers.length) {
@@ -675,20 +780,68 @@ const FinanceViews = {
     }
 
     var acctBreakdown = accts.map(a => {
-      var billsAmt = billsByAcct[a.name] ? billsByAcct[a.name].total : 0;
+      var billsAmt = billsByAcctPeriod[a.name] ? billsByAcctPeriod[a.name].total : 0;
       var ok = a.balance >= billsAmt;
       var shortfall = ok ? 0 : billsAmt - a.balance;
       return `<div class="proj-row"><span class="label"><span class="acct-tag" style="background:${FinanceCharts.getAccountColor(a.name)}">${FinanceCharts.getShortName(a.name)}</span></span><span class="value" style="color:${ok ? 'var(--green)' : 'var(--red)'}">${dm.formatCurrency(a.balance)}${billsAmt > 0 ? ' / ' + dm.formatCurrency(billsAmt) : ''}${!ok ? ' <span style="font-size:.6rem;color:var(--red)">⚠️ -' + dm.formatCurrency(shortfall) + '</span>' : ''}</span></div>`;
     }).join('');
 
     el.innerHTML = `
-      <div class="pnl"><div class="pnl-hd"><h3>💸 Where to Move Money</h3></div><div style="padding:14px 18px">${summaryHtml}${transferHtml}</div></div>
+      <div class="pnl"><div class="pnl-hd"><h3>💸 Where to Move Money</h3></div><div style="padding:14px 18px">${summaryHtml}${next7Html}${wageForecastHtml}${transferHtml}</div></div>
       ${savingsHtml}
-      <div class="pnl"><div class="pnl-hd"><h3>🏦 Account vs Obligations</h3></div><div style="padding:4px 18px">${acctBreakdown}</div></div>
+      <div class="pnl"><div class="pnl-hd"><h3>🏦 Account vs Obligations (${period}D)</h3></div><div style="padding:4px 18px">${acctBreakdown}</div></div>
       <div class="pnl"><div class="pnl-hd"><h3>📈 Monthly Projections</h3></div><div class="chart-w"><canvas id="projChart"></canvas></div></div>
     `;
 
     FinanceCharts.projectionChart('projChart', projections, dm);
+  },
+
+  // ===== WAGE FORECASTING =====
+  _forecastWages(wages, dm, periodDays) {
+    var result = { forecasts: [], totalExpected: 0, unconfirmed: [] };
+    if (!wages || wages.length < 2) return result;
+
+    var now = new Date();
+    var periodEnd = new Date(now.getTime() + periodDays * 24 * 60 * 60 * 1000);
+    var byUser = {};
+    wages.forEach(w => {
+      var user = w['User'] || 'Unknown';
+      if (!byUser[user]) byUser[user] = [];
+      byUser[user].push({ date: new Date(w['Date']), amount: dm.convert(parseFloat(w['Amount']) || 0, w['Currency'] || 'AUD') });
+    });
+
+    Object.entries(byUser).forEach(([user, entries]) => {
+      if (entries.length < 2) return;
+      entries.sort((a, b) => a.date - b.date);
+      // Calculate average gap between payments
+      var gaps = [];
+      for (var i = 1; i < entries.length; i++) {
+        gaps.push((entries[i].date - entries[i - 1].date) / (1000 * 60 * 60 * 24));
+      }
+      var avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
+      var avgAmount = entries.reduce((s, e) => s + e.amount, 0) / entries.length;
+      var lastDate = entries[entries.length - 1].date;
+
+      // Determine frequency label
+      var freqLabel = avgGap <= 8 ? 'week' : avgGap <= 16 ? 'fortnight' : 'month';
+
+      // Project next payments within period
+      var nextDate = new Date(lastDate.getTime() + avgGap * 24 * 60 * 60 * 1000);
+      var projectedTotal = 0;
+      var payCount = 0;
+      var firstNext = new Date(nextDate);
+      while (nextDate <= periodEnd) {
+        if (nextDate >= now) { projectedTotal += avgAmount; payCount++; }
+        nextDate = new Date(nextDate.getTime() + avgGap * 24 * 60 * 60 * 1000);
+      }
+
+      if (payCount > 0) {
+        result.forecasts.push({ user, frequency: freqLabel, avgAmount, projectedTotal, payCount, nextExpected: firstNext });
+        result.totalExpected += projectedTotal;
+      }
+    });
+
+    return result;
   },
 
   // ===== TRENDS & ANALYSIS =====
