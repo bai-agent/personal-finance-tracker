@@ -91,14 +91,13 @@ body{
 .btn-t{background:none;border:none;color:var(--blue);font-size:.78rem;font-weight:600;cursor:pointer}
 
 /* ===== ACCOUNT CARDS ===== */
-.agrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:8px}
-@media(max-width:380px){.agrid{grid-template-columns:1fr}}
-.acard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;cursor:pointer;transition:border-color .2s,transform .15s}
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:8px}
+.acard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;transition:border-color .2s,transform .15s}
 .acard:active{transform:scale(.97);border-color:var(--blue)}
-.acard .icon{font-size:.85rem;margin-bottom:2px}
-.acard .name{font-size:.7rem;font-weight:600;line-height:1.25}
-.acard .purpose{font-size:.58rem;color:var(--dim);margin:1px 0 6px}
-.acard .bal{font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums}
+.acard .icon{font-size:.75rem;margin-bottom:1px}
+.acard .name{font-size:.68rem;font-weight:600;line-height:1.2}
+.acard .purpose{font-size:.54rem;color:var(--dim);margin:1px 0 4px}
+.acard .bal{font-size:.88rem;font-weight:700;font-variant-numeric:tabular-nums}
 .acard .bal.pos{color:var(--green)}.acard .bal.neg{color:var(--red)}
 .acard .native{font-size:.55rem;color:var(--dim);margin-top:1px}
 .acard .chg{font-size:.58rem;margin-top:2px;font-weight:500}
@@ -107,7 +106,7 @@ body{
 /* ===== ACCOUNT DETAIL VIEW ===== */
 .acct-detail{display:none}
 .acct-detail.on{display:block}
-.acct-grid{display:block}
+.acct-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .acct-grid.hide{display:none}
 .back-btn{
   display:inline-flex;align-items:center;gap:6px;

@@ -56,6 +56,11 @@ const FinanceCharts = {
     return this.ACCOUNT_COLORS[name] || '#4f8cff';
   },
 
+  getShortName(name) {
+    var c = CONFIG.ACCOUNTS.find(function(a){return a.name === name});
+    return c ? c.shortName : (name || '').replace(/ \(.*\)/, '');
+  },
+
   getCategoryColor(cat) {
     return this.CATEGORY_COLORS[cat] || '#94a3b8';
   },

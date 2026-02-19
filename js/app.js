@@ -184,6 +184,12 @@
     FinanceCharts.categoryDonut('ovCatChart', filtered, dm);
     FinanceCharts.incomeExpenseBar('ovIncExpChart', l, dm);
     FinanceCharts.spendingTrend('ovTrendChart', filtered, dm);
+    // Show canvases, hide spinners
+    ['ovCatWrap','ovIncExpWrap','ovTrendWrap'].forEach(function(id){
+      var w=document.getElementById(id);if(!w)return;
+      var s=w.querySelector('.spinner');if(s)s.style.display='none';
+      var c=w.querySelector('canvas');if(c)c.style.display='';
+    });
 
     // Mini calendar
     FinanceViews.renderMiniCalendar(dm.cache.bills || []);
@@ -216,7 +222,7 @@
       var d = new Date(b['Next Due Date']);
       var days = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
       var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
-      return `<div class="bill-list-item"><div class="bill-left"><div class="bill-name">${b['Bill Name'] || ''}</div><div class="bill-meta">${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days'} · ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${(b['Account'] || '').replace(/ \(.*\)/, '')}</span></div></div><div class="bill-right"><div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div></div></div>`;
+      return `<div class="bill-list-item"><div class="bill-left"><div class="bill-name">${b['Bill Name'] || ''}</div><div class="bill-meta">${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days'} · ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span></div></div><div class="bill-right"><div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div></div></div>`;
     }).join('');
   }
 
@@ -231,7 +237,7 @@
       var c=CONFIG.ACCOUNTS.find(c=>c.name===x.name)||{};
       var color = FinanceCharts.getAccountColor(x.name);
       var nv=x.nativeCurrency!==dm.displayCurrency?'<div class="native">'+dm.formatCurrency(x.nativeBalance,x.nativeCurrency)+' '+x.nativeCurrency+'</div>':'';
-      return '<div class="acard" data-acct="'+x.name+'" style="border-left:3px solid '+color+'"><div class="icon">'+(c.icon||'💰')+'</div><div class="name">'+x.name.replace(/ \(.*\)/,'')+'</div>'+
+      return '<div class="acard" data-acct="'+x.name+'" style="border-left:3px solid '+color+'"><div class="icon">'+(c.icon||'💰')+'</div><div class="name">'+(c.shortName||x.name.replace(/ \(.*\)/,''))+'</div>'+
         '<div class="purpose">'+x.purpose+' · '+x.nativeCurrency+'</div>'+
         '<div class="bal '+(x.balance>=0?'pos':'neg')+'">'+dm.formatCurrency(x.balance)+'</div>'+nv+
         '<div class="chg '+(x.change>=0?'pos':'neg')+'">'+(x.change>=0?'↗':'↘')+' '+dm.formatCurrency(Math.abs(x.change))+'</div></div>';

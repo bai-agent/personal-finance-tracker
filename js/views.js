@@ -166,7 +166,7 @@ const FinanceViews = {
     detail.innerHTML = `
       <button class="back-btn" id="acctBack">← Back to Accounts</button>
       <div class="hero">
-        <div class="hero-lbl">${(cfg.icon || '💰')} ${accountName.replace(/ \(.*\)/, '')}</div>
+        <div class="hero-lbl">${(cfg.icon || '💰')} ${FinanceCharts.getShortName(accountName)}</div>
         <div class="hero-amt ${acct.balance >= 0 ? 'pos' : 'neg'}">${dm.formatCurrency(acct.balance)}</div>
         ${nv}
         <div class="hero-sub">${cfg.purpose || ''} · ${acct.nativeCurrency}</div>
@@ -338,7 +338,7 @@ const FinanceViews = {
       html += `<div class="cal-detail-item">
         <div class="cal-detail-left">
           <div class="bill-name">${b['Bill Name'] || ''}</div>
-          <div class="bill-meta"><span class="acct-tag" style="background:${acctColor}">${(b['Account'] || '').replace(/ \(.*\)/, '')}</span> · ${b['Frequency'] || 'Monthly'}</div>
+          <div class="bill-meta"><span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span> · ${b['Frequency'] || 'Monthly'}</div>
         </div>
         <div class="cal-detail-right">
           <div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div>
@@ -412,7 +412,7 @@ const FinanceViews = {
       return `<div class="bill-list-item">
         <div class="bill-left">
           <div class="bill-name">${b['Bill Name'] || ''}</div>
-          <div class="bill-meta">${b['Frequency'] || 'Monthly'} · Next: ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${(b['Account'] || '').replace(/ \(.*\)/, '')}</span></div>
+          <div class="bill-meta">${b['Frequency'] || 'Monthly'} · Next: ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span></div>
         </div>
         <div class="bill-right">
           <div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div>
@@ -616,8 +616,8 @@ const FinanceViews = {
       transferHtml = transfers.map(t => {
         var urgCls = t.urgency === 'overdue' ? 'advisor-urgent-red' : t.urgency === 'urgent' ? 'advisor-urgent-yellow' : t.urgency === 'soon' ? 'advisor-urgent-yellow' : 'advisor-urgent-green';
         var urgLabel = t.urgency === 'overdue' ? '🔴 OVERDUE' : t.urgency === 'urgent' ? '🟡 This Week' : t.urgency === 'soon' ? '🟡 Soon' : '🟢 Planned';
-        var fromLabel = t.from ? t.from.replace(/ \(.*\)/, '') : '⚠️ Multiple sources needed';
-        var toLabel = t.to.replace(/ \(.*\)/, '');
+        var fromLabel = t.from ? FinanceCharts.getShortName(t.from) : '⚠️ Multiple sources needed';
+        var toLabel = FinanceCharts.getShortName(t.to);
         return `<div class="advisor-card ${urgCls}"><div class="advisor-card-top"><div class="advisor-card-amt">${dm.formatCurrency(t.amount)}</div><div class="advisor-card-urg">${urgLabel}</div></div><div class="advisor-card-route">${fromLabel} → ${toLabel}</div><div class="advisor-card-reason">${t.reason}</div><div class="advisor-card-deadline">⏰ ${t.deadline}</div><div class="advisor-card-bills">${t.billNames}</div></div>`;
       }).join('');
     } else {
@@ -628,7 +628,7 @@ const FinanceViews = {
       var billsAmt = billsByAcct[a.name] ? billsByAcct[a.name].total : 0;
       var ok = a.balance >= billsAmt;
       var shortfall = ok ? 0 : billsAmt - a.balance;
-      return `<div class="proj-row"><span class="label"><span class="acct-tag" style="background:${FinanceCharts.getAccountColor(a.name)}">${a.name.replace(/ \(.*\)/, '')}</span></span><span class="value" style="color:${ok ? 'var(--green)' : 'var(--red)'}">${dm.formatCurrency(a.balance)}${billsAmt > 0 ? ' / ' + dm.formatCurrency(billsAmt) : ''}${!ok ? ' <span style="font-size:.6rem;color:var(--red)">⚠️ -' + dm.formatCurrency(shortfall) + '</span>' : ''}</span></div>`;
+      return `<div class="proj-row"><span class="label"><span class="acct-tag" style="background:${FinanceCharts.getAccountColor(a.name)}">${FinanceCharts.getShortName(a.name)}</span></span><span class="value" style="color:${ok ? 'var(--green)' : 'var(--red)'}">${dm.formatCurrency(a.balance)}${billsAmt > 0 ? ' / ' + dm.formatCurrency(billsAmt) : ''}${!ok ? ' <span style="font-size:.6rem;color:var(--red)">⚠️ -' + dm.formatCurrency(shortfall) + '</span>' : ''}</span></div>`;
     }).join('');
 
     el.innerHTML = `
@@ -922,7 +922,7 @@ function txHtml(t, dm, showBal) {
   var n = t.currency !== dm.displayCurrency ? '<div class="tx-n">' + dm.formatCurrency(t.amount, t.currency) + ' ' + t.currency + '</div>' : '';
   var bl = showBal ? '<div class="tx-b">Bal: ' + dm.formatCurrency(t.convertedBalance) + '</div>' : '';
   var acctColor = FinanceCharts.getAccountColor(t.account);
-  var tag = '<div class="acct-tag" style="background:' + acctColor + '">' + (t.account || '').replace(/ \(.*\)/, '') + '</div>';
+  var tag = '<div class="acct-tag" style="background:' + acctColor + '">' + FinanceCharts.getShortName(t.account || '') + '</div>';
   return '<div class="tx"><div class="tx-l"><div class="tx-d">' + t.description + '</div><div class="tx-m">' + formatDate(t.date) + ' · ' + t.category + '</div>' + tag + '</div><div class="tx-r"><div class="tx-a ' + (p ? 'pos' : 'neg') + '">' + (p ? '+' : '') + a + '</div>' + n + bl + '</div></div>';
 }
 

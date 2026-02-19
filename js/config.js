@@ -7,14 +7,14 @@ const CONFIG = {
   },
 
   ACCOUNTS: [
-    { id: 'bw_cba', name: 'BW Personal (Commonwealth)', bank: 'CBA', user: 'Bailey', purpose: 'Wages', currency: 'AUD', icon: '🏛️', type: 'checking' },
-    { id: 'katie_cba', name: 'Katie Personal (Commonwealth)', bank: 'CBA', user: 'Katie', purpose: 'Wages', currency: 'AUD', icon: '🏛️', type: 'checking' },
-    { id: 'joint_cba', name: 'Joint (Commonwealth)', bank: 'CBA', user: 'Joint', purpose: 'Bills', currency: 'AUD', icon: '🏛️', type: 'checking' },
-    { id: 'saver_cba', name: 'Joint Saver (Commonwealth)', bank: 'CBA', user: 'Joint', purpose: 'Savings', currency: 'AUD', icon: '🏛️', type: 'savings' },
-    { id: 'bw_starling', name: 'BW Personal (Starling)', bank: 'Starling', user: 'Bailey', purpose: 'Spending', currency: 'GBP', icon: '⭐', type: 'checking' },
-    { id: 'katie_starling', name: 'Katie Personal (Starling)', bank: 'Starling', user: 'Katie', purpose: 'Spending', currency: 'GBP', icon: '⭐', type: 'checking' },
-    { id: 'joint_starling', name: 'Joint (Starling)', bank: 'Starling', user: 'Joint', purpose: 'Food', currency: 'GBP', icon: '⭐', type: 'checking' },
-    { id: 'cc_capone', name: 'Credit Card (Capital One)', bank: 'Capital One', user: 'Joint', purpose: 'Credit', currency: 'GBP', icon: '💳', type: 'credit' }
+    { id: 'bw_cba', name: 'BW Personal (Commonwealth)', shortName: 'Bailey CW', bank: 'CBA', user: 'Bailey', purpose: 'Wages', currency: 'AUD', icon: '🏛️', type: 'checking' },
+    { id: 'katie_cba', name: 'Katie Personal (Commonwealth)', shortName: 'Katie CW', bank: 'CBA', user: 'Katie', purpose: 'Wages', currency: 'AUD', icon: '🏛️', type: 'checking' },
+    { id: 'joint_cba', name: 'Joint (Commonwealth)', shortName: 'Joint CW', bank: 'CBA', user: 'Joint', purpose: 'Bills', currency: 'AUD', icon: '🏛️', type: 'checking' },
+    { id: 'saver_cba', name: 'Joint Saver (Commonwealth)', shortName: 'Joint Saver CW', bank: 'CBA', user: 'Joint', purpose: 'Savings', currency: 'AUD', icon: '🏛️', type: 'savings' },
+    { id: 'bw_starling', name: 'BW Personal (Starling)', shortName: 'Bailey STR', bank: 'Starling', user: 'Bailey', purpose: 'Spending', currency: 'GBP', icon: '⭐', type: 'checking' },
+    { id: 'katie_starling', name: 'Katie Personal (Starling)', shortName: 'Katie STR', bank: 'Starling', user: 'Katie', purpose: 'Spending', currency: 'GBP', icon: '⭐', type: 'checking' },
+    { id: 'joint_starling', name: 'Joint (Starling)', shortName: 'Joint STR', bank: 'Starling', user: 'Joint', purpose: 'Food', currency: 'GBP', icon: '⭐', type: 'checking' },
+    { id: 'cc_capone', name: 'Credit Card (Capital One)', shortName: 'Capital One', bank: 'Capital One', user: 'Joint', purpose: 'Credit', currency: 'GBP', icon: '💳', type: 'credit' }
   ],
 
   CHART_COLORS: {
