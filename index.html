@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>B&K Finance Tracker</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="B&K Finance">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/mobile.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
@@ -28,13 +27,13 @@
         <!-- Navigation -->
         <nav class="nav-container">
             <select id="navDropdown" class="nav-dropdown">
-                <option value="overview">📊 Overview</option>
-                <option value="statements">🏦 Statements</option>
-                <option value="history">📈 Full History</option>
-                <option value="wages">💵 Wages</option>
-                <option value="bills">📋 Bills</option>
-                <option value="savings">💎 Savings</option>
-                <option value="insights">💡 Insights</option>
+                <option value="overview">📊  Overview</option>
+                <option value="accounts">🏦  Accounts</option>
+                <option value="statements">📄  Statements</option>
+                <option value="wages">💵  Wages</option>
+                <option value="bills">📋  Bills</option>
+                <option value="savings">💎  Savings</option>
+                <option value="insights">💡  Insights</option>
             </select>
         </nav>
 
@@ -42,137 +41,151 @@
 
             <!-- ========== OVERVIEW ========== -->
             <div id="overview" class="tab-content active">
-                <!-- Account Filter -->
-                <div class="card filter-card">
-                    <div class="card-header"><h3>🏦 Accounts</h3>
-                        <button class="select-all-btn" id="selectAllBtn">Select All</button>
+                <!-- Summary Cards -->
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-label">Overall Balance</div>
+                        <div class="summary-value" id="overallBalance">$0.00</div>
+                        <div class="summary-sub" id="overallSub">All accounts</div>
                     </div>
-                    <div class="card-body">
-                        <div class="account-filters" id="accountFilters"></div>
+                    <div class="summary-card accent">
+                        <div class="summary-label">Monthly Income</div>
+                        <div class="summary-value" id="monthlyIncome">$0.00</div>
+                        <div class="summary-sub">Last 30 days</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Monthly Expenses</div>
+                        <div class="summary-value" id="monthlyExpenses">$0.00</div>
+                        <div class="summary-sub">Last 30 days</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Savings Rate</div>
+                        <div class="summary-value" id="savingsRate">--%</div>
+                        <div class="summary-sub" id="savingsSub"></div>
                     </div>
                 </div>
 
-                <!-- Balance Summary -->
-                <div class="balance-summary">
-                    <div class="card balance-card">
-                        <div class="card-body">
-                            <div class="balance-label">Selected Balance</div>
-                            <div class="balance-amount" id="selectedBalance">$0.00</div>
-                            <div class="balance-sub" id="selectedBalanceSub"></div>
-                        </div>
+                <!-- User Breakdown -->
+                <div class="user-grid">
+                    <div class="user-card">
+                        <div class="user-name">👤 Bailey</div>
+                        <div class="user-stat"><span>CBA (Wages)</span><span id="baileyWages">$0.00</span></div>
+                        <div class="user-stat"><span>Starling (Spending)</span><span id="baileySpending">$0.00</span></div>
                     </div>
-                    <div class="card balance-card total">
-                        <div class="card-body">
-                            <div class="balance-label">Overall Balance</div>
-                            <div class="balance-amount" id="overallBalance">$0.00</div>
-                            <div class="balance-sub" id="overallBalanceSub"></div>
-                        </div>
+                    <div class="user-card">
+                        <div class="user-name">👤 Katie</div>
+                        <div class="user-stat"><span>CBA (Wages)</span><span id="katieWages">$0.00</span></div>
+                        <div class="user-stat"><span>Starling (Spending)</span><span id="katieSpending">$0.00</span></div>
                     </div>
+                    <div class="user-card full">
+                        <div class="user-name">🤝 Joint</div>
+                        <div class="user-stat"><span>CBA (Bills)</span><span id="jointBills">$0.00</span></div>
+                        <div class="user-stat"><span>Saver (Savings)</span><span id="jointSavings">$0.00</span></div>
+                        <div class="user-stat"><span>Starling (Food)</span><span id="jointFood">$0.00</span></div>
+                        <div class="user-stat"><span>Capital One (Credit)</span><span id="jointCredit">$0.00</span></div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="section-card">
+                    <div class="section-header">
+                        <h3>Recent Transactions</h3>
+                        <button class="link-btn" id="viewAllBtn">View All →</button>
+                    </div>
+                    <div class="section-body" id="recentTransactions">
+                        <p class="no-data">Loading...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== ACCOUNTS ========== -->
+            <div id="accounts" class="tab-content">
+                <!-- Account Filter Dropdown -->
+                <div class="account-filter-bar">
+                    <div class="custom-dropdown" id="accountDropdown">
+                        <button class="dropdown-trigger" id="accountDropdownBtn">
+                            <span>🏦 All Accounts (8)</span>
+                            <span class="dropdown-arrow">▾</span>
+                        </button>
+                        <div class="dropdown-menu" id="accountDropdownMenu"></div>
+                    </div>
+                </div>
+
+                <!-- Selected Balance -->
+                <div class="balance-bar">
+                    <div class="balance-bar-label">Selected Balance</div>
+                    <div class="balance-bar-value" id="selectedBalance">$0.00</div>
                 </div>
 
                 <!-- Account Cards -->
                 <div class="accounts-grid" id="accountCards"></div>
-
-                <!-- Recent Transactions (7 days) -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Recent Transactions (7 days)</h3>
-                        <button class="view-all-btn" id="viewAllBtn">View All →</button>
-                    </div>
-                    <div class="card-body">
-                        <div class="transactions-list" id="recentTransactions">
-                            <p class="no-data">Loading...</p>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            <!-- ========== STATEMENTS (full per-account view) ========== -->
+            <!-- ========== STATEMENTS ========== -->
             <div id="statements" class="tab-content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>🏦 Account Statement</h3>
-                    </div>
-                    <div class="card-body">
-                        <!-- Account selector -->
-                        <div class="statement-controls">
-                            <select id="statementAccount" class="filter-select">
+                <div class="section-card">
+                    <div class="section-header"><h3>📄 Account Statement</h3></div>
+                    <div class="section-body">
+                        <div class="controls-row">
+                            <select id="statementAccount" class="control-select">
                                 <option value="all">All Accounts</option>
                             </select>
-                            <select id="statementMonth" class="filter-select">
+                            <select id="statementMonth" class="control-select">
                                 <option value="">Last 7 Days</option>
                             </select>
                         </div>
-                        <div class="statement-balance-bar" id="statementBalanceBar"></div>
-                        <div class="transactions-list statement-list" id="statementList">
+                        <div id="statementBalanceBar"></div>
+                        <div id="statementList">
                             <p class="no-data">Select an account and period</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ========== FULL HISTORY ========== -->
-            <div id="history" class="tab-content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>📈 Full Transaction History</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="statement-controls">
-                            <div class="history-account-filters" id="historyAccountFilters"></div>
-                            <select id="historyMonth" class="filter-select">
-                                <option value="">All Time</option>
-                            </select>
-                        </div>
-                        <div class="transactions-list" id="historyList">
-                            <p class="no-data">Loading...</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Balance Chart -->
-                <div class="card">
-                    <div class="card-header"><h3>Balance Over Time</h3></div>
-                    <div class="card-body"><canvas id="balanceChart" class="chart-canvas"></canvas></div>
+                <div class="section-card">
+                    <div class="section-header"><h3>Balance Over Time</h3></div>
+                    <div class="section-body chart-body">
+                        <canvas id="balanceChart"></canvas>
+                    </div>
                 </div>
             </div>
 
             <!-- ========== WAGES ========== -->
             <div id="wages" class="tab-content">
-                <div class="card">
-                    <div class="card-header"><h3>💵 Wage History</h3></div>
-                    <div class="card-body">
-                        <div id="wagesContent"><p class="no-data">Loading...</p></div>
+                <div class="section-card">
+                    <div class="section-header"><h3>💵 Wage History</h3></div>
+                    <div class="section-body" id="wagesContent">
+                        <p class="no-data">Loading...</p>
                     </div>
                 </div>
             </div>
 
             <!-- ========== BILLS ========== -->
             <div id="bills" class="tab-content">
-                <div class="card">
-                    <div class="card-header"><h3>📋 Recurring Bills</h3></div>
-                    <div class="card-body">
-                        <div id="billsContent"><p class="no-data">Loading...</p></div>
+                <div class="section-card">
+                    <div class="section-header"><h3>📋 Recurring Bills</h3></div>
+                    <div class="section-body" id="billsContent">
+                        <p class="no-data">Loading...</p>
                     </div>
                 </div>
             </div>
 
             <!-- ========== SAVINGS ========== -->
             <div id="savings" class="tab-content">
-                <div class="card">
-                    <div class="card-header"><h3>💎 Savings Goals</h3></div>
-                    <div class="card-body">
-                        <div id="savingsContent"><p class="no-data">Loading...</p></div>
+                <div class="section-card">
+                    <div class="section-header"><h3>💎 Savings Goals</h3></div>
+                    <div class="section-body" id="savingsContent">
+                        <p class="no-data">Loading...</p>
                     </div>
                 </div>
             </div>
 
             <!-- ========== INSIGHTS ========== -->
             <div id="insights" class="tab-content">
-                <div class="card">
-                    <div class="card-header"><h3>💡 BAI Insights</h3></div>
-                    <div class="card-body">
-                        <div id="insightsContent"><p class="no-data">Upload bank statements to get insights</p></div>
+                <div class="section-card">
+                    <div class="section-header"><h3>🤖 BAI Insights</h3></div>
+                    <div class="section-body" id="insightsContent">
+                        <p class="no-data">Upload bank statements to get insights</p>
                     </div>
                 </div>
             </div>
@@ -180,9 +193,7 @@
         </main>
 
         <footer class="footer">
-            <div class="footer-content">
-                <p>Powered by BAI 🤖 | <span id="dataSourceLabel">Loading...</span> | Rate: <span id="exchangeRateLabel">--</span></p>
-            </div>
+            <p><span id="dataSourceLabel">Loading...</span> · Rate: <span id="exchangeRateLabel">£1 = $--</span> · BAI 🤖</p>
         </footer>
     </div>
 

@@ -1,45 +1,37 @@
 // Main App Controller
-
 (function() {
+  'use strict';
+
   let selectedAccounts = CONFIG.ACCOUNTS.map(a => a.name);
   let currentTab = 'overview';
+  let dropdownOpen = false;
 
   // ==================== INIT ====================
-
   document.addEventListener('DOMContentLoaded', async () => {
     setupNav();
     setupCurrencyToggle();
     setupRefresh();
-    setupAccountFilters();
+    setupAccountDropdown();
+    setupViewAll();
 
     await dataManager.fetchAll();
-    renderOverview();
-    renderFooter();
-
-    // View All button
-    document.getElementById('viewAllBtn')?.addEventListener('click', () => {
-      switchTab('statements');
-    });
-
-    // Select All button
-    document.getElementById('selectAllBtn')?.addEventListener('click', toggleSelectAll);
-
-    // Statement controls
-    document.getElementById('statementAccount')?.addEventListener('change', renderStatement);
-    document.getElementById('statementMonth')?.addEventListener('change', renderStatement);
-    document.getElementById('historyMonth')?.addEventListener('change', renderHistory);
-
-    populateMonthDropdowns();
-    populateStatementAccountDropdown();
+    renderAll();
   });
 
-  // ==================== NAVIGATION ====================
+  function renderAll() {
+    renderOverview();
+    renderAccountCards();
+    renderSelectedBalance();
+    populateStatementDropdowns();
+    renderFooter();
+  }
 
+  // ==================== NAVIGATION ====================
   function setupNav() {
     const dd = document.getElementById('navDropdown');
-    dd.addEventListener('change', (e) => switchTab(e.target.value));
+    dd.addEventListener('change', e => switchTab(e.target.value));
     const hash = location.hash.slice(1);
-    if (hash) { dd.value = hash; switchTab(hash); }
+    if (hash && document.getElementById(hash)) { dd.value = hash; switchTab(hash); }
   }
 
   function switchTab(tab) {
@@ -51,192 +43,242 @@
     location.hash = tab;
 
     if (tab === 'statements') renderStatement();
-    if (tab === 'history') renderHistory();
     if (tab === 'wages') renderWages();
     if (tab === 'bills') renderBills();
     if (tab === 'savings') renderSavings();
   }
 
   // ==================== CURRENCY TOGGLE ====================
-
   function setupCurrencyToggle() {
     const btn = document.getElementById('currencyToggle');
     btn.addEventListener('click', () => {
       dataManager.displayCurrency = dataManager.displayCurrency === 'AUD' ? 'GBP' : 'AUD';
       btn.textContent = dataManager.displayCurrency === 'AUD' ? '$ AUD' : '£ GBP';
       btn.classList.toggle('gbp', dataManager.displayCurrency === 'GBP');
-      renderOverview();
+      renderAll();
       if (currentTab === 'statements') renderStatement();
-      if (currentTab === 'history') renderHistory();
     });
   }
 
   // ==================== REFRESH ====================
-
   function setupRefresh() {
     document.getElementById('refreshBtn').addEventListener('click', async () => {
       const btn = document.getElementById('refreshBtn');
       btn.style.animation = 'spin 1s linear infinite';
       await dataManager.fetchAll();
-      renderOverview();
-      renderFooter();
+      renderAll();
+      if (currentTab === 'statements') renderStatement();
       btn.style.animation = 'none';
     });
   }
 
-  // ==================== ACCOUNT FILTERS ====================
+  // ==================== VIEW ALL ====================
+  function setupViewAll() {
+    document.getElementById('viewAllBtn')?.addEventListener('click', () => switchTab('statements'));
+  }
 
-  function setupAccountFilters() {
-    const container = document.getElementById('accountFilters');
-    CONFIG.ACCOUNTS.forEach(acct => {
-      const label = document.createElement('label');
-      label.className = 'account-filter-item';
-      label.innerHTML = `
-        <input type="checkbox" value="${acct.name}" checked>
-        <span class="filter-label">${acct.icon} ${acct.name.replace(/ \(.*\)/, '')} <span class="currency-tag">${acct.currency}</span></span>
-      `;
-      label.querySelector('input').addEventListener('change', (e) => {
-        if (e.target.checked) {
-          if (!selectedAccounts.includes(acct.name)) selectedAccounts.push(acct.name);
-        } else {
-          selectedAccounts = selectedAccounts.filter(n => n !== acct.name);
-        }
-        renderBalances();
-        renderRecentTransactions();
+  // ==================== ACCOUNT DROPDOWN ====================
+  function setupAccountDropdown() {
+    const btn = document.getElementById('accountDropdownBtn');
+    const menu = document.getElementById('accountDropdownMenu');
+
+    // Build menu items
+    let html = '';
+    CONFIG.ACCOUNTS.forEach(a => {
+      html += `<label class="dropdown-item" data-account="${a.name}">
+        <input type="checkbox" value="${a.name}" checked>
+        <div class="dropdown-item-label">
+          ${a.icon} ${a.name}
+          <div class="dropdown-item-sub">${a.user} · ${a.purpose}</div>
+        </div>
+        <span class="dropdown-item-currency">${a.currency}</span>
+      </label>`;
+    });
+    html += `<div class="dropdown-actions">
+      <button id="selectAllAccounts">Select All</button>
+      <button id="selectNoneAccounts">Select None</button>
+      <button id="doneAccounts">Done ✓</button>
+    </div>`;
+    menu.innerHTML = html;
+
+    // Toggle dropdown
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdownOpen = !dropdownOpen;
+      menu.classList.toggle('open', dropdownOpen);
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.custom-dropdown')) {
+        dropdownOpen = false;
+        menu.classList.remove('open');
+      }
+    });
+
+    // Checkbox changes
+    menu.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        updateSelectedFromCheckboxes();
       });
-      container.appendChild(label);
+    });
+
+    // Select all / none / done
+    document.getElementById('selectAllAccounts').addEventListener('click', () => {
+      menu.querySelectorAll('input').forEach(cb => cb.checked = true);
+      updateSelectedFromCheckboxes();
+    });
+    document.getElementById('selectNoneAccounts').addEventListener('click', () => {
+      menu.querySelectorAll('input').forEach(cb => cb.checked = false);
+      updateSelectedFromCheckboxes();
+    });
+    document.getElementById('doneAccounts').addEventListener('click', () => {
+      dropdownOpen = false;
+      menu.classList.remove('open');
     });
   }
 
-  function toggleSelectAll() {
-    const checkboxes = document.querySelectorAll('#accountFilters input[type=checkbox]');
-    const allChecked = selectedAccounts.length === CONFIG.ACCOUNTS.length;
-    checkboxes.forEach(cb => { cb.checked = !allChecked; });
-    selectedAccounts = allChecked ? [] : CONFIG.ACCOUNTS.map(a => a.name);
-    renderBalances();
-    renderRecentTransactions();
-  }
+  function updateSelectedFromCheckboxes() {
+    const menu = document.getElementById('accountDropdownMenu');
+    const checked = menu.querySelectorAll('input:checked');
+    selectedAccounts = [...checked].map(cb => cb.value);
 
-  // ==================== OVERVIEW RENDERING ====================
+    // Update trigger label
+    const count = selectedAccounts.length;
+    const total = CONFIG.ACCOUNTS.length;
+    const label = count === total ? `🏦 All Accounts (${total})`
+      : count === 0 ? '🏦 No Accounts Selected'
+      : `🏦 ${count} Account${count > 1 ? 's' : ''} Selected`;
+    document.getElementById('accountDropdownBtn').querySelector('span:first-child').textContent = label;
 
-  function renderOverview() {
     renderAccountCards();
-    renderBalances();
-    renderRecentTransactions();
+    renderSelectedBalance();
+    renderOverview();
   }
 
+  // ==================== OVERVIEW ====================
+  function renderOverview() {
+    const accounts = dataManager.getAccounts();
+    const ledger = dataManager.getLedger();
+    const dm = dataManager;
+
+    // Overall balance (all accounts)
+    const overall = accounts.reduce((s, a) => s + a.balance, 0);
+    const el = document.getElementById('overallBalance');
+    el.textContent = dm.formatCurrency(overall);
+    el.className = 'summary-value ' + (overall >= 0 ? 'positive' : 'negative');
+
+    // Monthly income/expenses from ledger
+    const income = ledger.filter(t => t.amount > 0).reduce((s, t) => s + t.convertedAmount, 0);
+    const expenses = Math.abs(ledger.filter(t => t.amount < 0).reduce((s, t) => s + t.convertedAmount, 0));
+    document.getElementById('monthlyIncome').textContent = dm.formatCurrency(income);
+    document.getElementById('monthlyIncome').className = 'summary-value positive';
+    document.getElementById('monthlyExpenses').textContent = dm.formatCurrency(expenses);
+    document.getElementById('monthlyExpenses').className = 'summary-value negative';
+
+    const rate = income > 0 ? ((income - expenses) / income * 100).toFixed(0) : '--';
+    document.getElementById('savingsRate').textContent = rate + '%';
+    document.getElementById('savingsRate').className = 'summary-value ' + (rate >= 20 ? 'positive' : rate >= 0 ? '' : 'negative');
+
+    // User balances
+    const findBal = (name) => {
+      const a = accounts.find(a => a.name === name);
+      return a ? dm.formatCurrency(a.balance) : dm.formatCurrency(0);
+    };
+    document.getElementById('baileyWages').textContent = findBal('BW Personal (Commonwealth)');
+    document.getElementById('baileySpending').textContent = findBal('BW Personal (Starling)');
+    document.getElementById('katieWages').textContent = findBal('Katie Personal (Commonwealth)');
+    document.getElementById('katieSpending').textContent = findBal('Katie Personal (Starling)');
+    document.getElementById('jointBills').textContent = findBal('Joint (Commonwealth)');
+    document.getElementById('jointSavings').textContent = findBal('Joint Saver (Commonwealth)');
+    document.getElementById('jointFood').textContent = findBal('Joint (Starling)');
+    document.getElementById('jointCredit').textContent = findBal('Credit Card (Capital One)');
+
+    // Recent transactions (filtered by selected)
+    const filtered = ledger.filter(t => selectedAccounts.includes(t.account));
+    const container = document.getElementById('recentTransactions');
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="no-data">No transactions in the last 7 days</p>';
+    } else {
+      container.innerHTML = filtered.slice(0, 30).map(t => txnRow(t, false)).join('');
+    }
+  }
+
+  // ==================== ACCOUNT CARDS ====================
   function renderAccountCards() {
     const accounts = dataManager.getAccounts();
+    const dm = dataManager;
     const container = document.getElementById('accountCards');
+
     container.innerHTML = accounts.map(a => {
       const cfg = CONFIG.ACCOUNTS.find(c => c.name === a.name) || {};
-      const bal = dataManager.formatCurrency(a.balance);
-      const nativeBal = a.nativeCurrency !== dataManager.displayCurrency
-        ? `<div class="native-bal">${dataManager.formatCurrency(a.nativeBalance, a.nativeCurrency)} ${a.nativeCurrency}</div>`
-        : '';
-      const changeClass = a.change >= 0 ? 'positive' : 'negative';
-      const changeStr = dataManager.formatCurrency(a.change);
-      return `
-        <div class="card account-card ${a.type}">
-          <div class="card-body">
-            <div class="account-header">
-              <div>
-                <div class="account-name">${cfg.icon || '💰'} ${a.name}</div>
-                <div class="account-type">${a.purpose} · ${a.nativeCurrency}</div>
-              </div>
-            </div>
-            <div class="account-balance ${a.balance >= 0 ? 'positive' : 'negative'}">${bal}</div>
-            ${nativeBal}
-            <div class="account-change ${changeClass}">${a.change >= 0 ? '↗️' : '↘️'} ${changeStr}</div>
-          </div>
-        </div>`;
+      const dimmed = !selectedAccounts.includes(a.name) ? ' dimmed' : '';
+      const nativeStr = a.nativeCurrency !== dm.displayCurrency
+        ? `<div class="acct-native">${dm.formatCurrency(a.nativeBalance, a.nativeCurrency)} ${a.nativeCurrency}</div>` : '';
+      return `<div class="account-card${dimmed}">
+        <div class="acct-name">${cfg.icon || '💰'} ${a.name.replace(/ \(.*\)/, '')}</div>
+        <div class="acct-purpose">${a.purpose} · ${a.nativeCurrency}</div>
+        <div class="acct-balance ${a.balance >= 0 ? 'positive' : 'negative'}">${dm.formatCurrency(a.balance)}</div>
+        ${nativeStr}
+        <div class="acct-change ${a.change >= 0 ? 'positive' : 'negative'}">${a.change >= 0 ? '↗' : '↘'} ${dm.formatCurrency(Math.abs(a.change))}</div>
+      </div>`;
     }).join('');
   }
 
-  function renderBalances() {
+  function renderSelectedBalance() {
     const accounts = dataManager.getAccounts();
-    const overall = accounts.reduce((s, a) => s + a.balance, 0);
-    const selected = accounts
-      .filter(a => selectedAccounts.includes(a.name))
-      .reduce((s, a) => s + a.balance, 0);
-
-    const cur = dataManager.displayCurrency;
-    document.getElementById('overallBalance').textContent = dataManager.formatCurrency(overall);
-    document.getElementById('overallBalance').className = 'balance-amount ' + (overall >= 0 ? 'positive' : 'negative');
-    document.getElementById('overallBalanceSub').textContent = `All 8 accounts in ${cur}`;
-
-    document.getElementById('selectedBalance').textContent = dataManager.formatCurrency(selected);
-    document.getElementById('selectedBalance').className = 'balance-amount ' + (selected >= 0 ? 'positive' : 'negative');
-    document.getElementById('selectedBalanceSub').textContent = `${selectedAccounts.length} account${selectedAccounts.length !== 1 ? 's' : ''} selected`;
+    const selected = accounts.filter(a => selectedAccounts.includes(a.name)).reduce((s, a) => s + a.balance, 0);
+    const el = document.getElementById('selectedBalance');
+    el.textContent = dataManager.formatCurrency(selected);
+    el.className = 'balance-bar-value ' + (selected >= 0 ? 'positive' : 'negative');
   }
 
-  function renderRecentTransactions() {
-    const ledger = dataManager.getLedger();
-    const filtered = ledger.filter(e => selectedAccounts.includes(e.account));
-    const container = document.getElementById('recentTransactions');
-
-    if (filtered.length === 0) {
-      container.innerHTML = '<p class="no-data">No transactions in the last 7 days</p>';
-      return;
+  // ==================== STATEMENTS ====================
+  function populateStatementDropdowns() {
+    const sel = document.getElementById('statementAccount');
+    if (sel.options.length <= 1) {
+      CONFIG.ACCOUNTS.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.name;
+        opt.textContent = `${a.icon} ${a.name} (${a.currency})`;
+        sel.appendChild(opt);
+      });
     }
 
-    container.innerHTML = filtered.slice(0, 50).map(t => txnRow(t)).join('');
-  }
-
-  // ==================== STATEMENT VIEW ====================
-
-  function populateStatementAccountDropdown() {
-    const sel = document.getElementById('statementAccount');
-    CONFIG.ACCOUNTS.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.name;
-      opt.textContent = `${a.icon} ${a.name} (${a.currency})`;
-      sel.appendChild(opt);
-    });
-  }
-
-  function populateMonthDropdowns() {
-    // We'll populate from ledger data
+    // Months from ledger
     const ledger = dataManager.getLedger();
     const months = new Set();
     ledger.forEach(e => {
-      if (e.date) {
-        const m = e.date.getFullYear() + '-' + String(e.date.getMonth() + 1).padStart(2, '0');
-        months.add(m);
-      }
+      if (e.date) months.add(e.date.getFullYear() + '-' + String(e.date.getMonth() + 1).padStart(2, '0'));
     });
-    const sorted = [...months].sort().reverse();
 
-    ['statementMonth', 'historyMonth'].forEach(id => {
-      const sel = document.getElementById(id);
-      if (!sel) return;
-      // Keep first option
-      while (sel.options.length > 1) sel.remove(1);
-      sorted.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m;
-        const [y, mo] = m.split('-');
-        const monthName = new Date(y, mo - 1).toLocaleString('en-AU', { month: 'long', year: 'numeric' });
-        opt.textContent = monthName;
-        sel.appendChild(opt);
-      });
+    const mSel = document.getElementById('statementMonth');
+    while (mSel.options.length > 1) mSel.remove(1);
+    [...months].sort().reverse().forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      const [y, mo] = m.split('-');
+      opt.textContent = new Date(y, mo - 1).toLocaleString('en-AU', { month: 'long', year: 'numeric' });
+      mSel.appendChild(opt);
     });
+
+    document.getElementById('statementAccount').addEventListener('change', renderStatement);
+    document.getElementById('statementMonth').addEventListener('change', renderStatement);
   }
 
   async function renderStatement() {
     const account = document.getElementById('statementAccount').value;
     const month = document.getElementById('statementMonth').value;
     const container = document.getElementById('statementList');
-    const balanceBar = document.getElementById('statementBalanceBar');
+    const balBar = document.getElementById('statementBalanceBar');
 
     container.innerHTML = '<p class="no-data">Loading...</p>';
 
     let ledger;
     if (month) {
-      // Fetch full month from API
       const accts = account === 'all' ? null : [account];
-      ledger = await dataManager.fetchLedger(month, accts);
-      ledger = ledger.map(e => {
+      const raw = await dataManager.fetchLedger(month, accts);
+      ledger = raw.map(e => {
         const cur = e['Currency'] || dataManager.getAccountCurrency(e['Account']);
         return {
           date: e['Date'] ? new Date(e['Date']) : null,
@@ -246,7 +288,6 @@
           category: e['Category'] || '',
           account: e['Account'] || '',
           currency: cur,
-          type: e['Type'] || '',
           convertedAmount: dataManager.convert(parseFloat(e['Amount']) || 0, cur),
           convertedBalance: dataManager.convert(parseFloat(e['Balance After']) || 0, cur)
         };
@@ -258,15 +299,11 @@
 
     // Balance bar
     if (account !== 'all') {
-      const acctData = dataManager.getAccounts().find(a => a.name === account);
-      if (acctData) {
-        balanceBar.innerHTML = `<div class="statement-balance">Current Balance: <strong>${dataManager.formatCurrency(acctData.balance)}</strong></div>`;
-      } else {
-        balanceBar.innerHTML = '';
-      }
-    } else {
-      balanceBar.innerHTML = '';
-    }
+      const a = dataManager.getAccounts().find(a => a.name === account);
+      if (a) {
+        balBar.innerHTML = `<div class="stmt-balance">Current Balance: <strong>${dataManager.formatCurrency(a.balance)}</strong></div>`;
+      } else { balBar.innerHTML = ''; }
+    } else { balBar.innerHTML = ''; }
 
     if (ledger.length === 0) {
       container.innerHTML = '<p class="no-data">No transactions found</p>';
@@ -274,206 +311,120 @@
     }
 
     container.innerHTML = ledger.map(t => txnRow(t, true)).join('');
-  }
 
-  // ==================== HISTORY VIEW ====================
-
-  function renderHistory() {
-    const month = document.getElementById('historyMonth').value;
-    const container = document.getElementById('historyList');
-
-    let ledger = dataManager.getLedger();
-
-    // If we need all data beyond 7 days, fetch it
-    if (month) {
-      // Use cached data filtered by month
-      ledger = ledger.filter(e => {
-        if (!e.date) return false;
-        const m = e.date.getFullYear() + '-' + String(e.date.getMonth() + 1).padStart(2, '0');
-        return m === month;
-      });
-    }
-
-    // Also check history filters
-    const checks = document.querySelectorAll('#historyAccountFilters input:checked');
-    if (checks.length > 0 && checks.length < CONFIG.ACCOUNTS.length) {
-      const selected = [...checks].map(c => c.value);
-      ledger = ledger.filter(e => selected.includes(e.account));
-    }
-
-    if (ledger.length === 0) {
-      container.innerHTML = '<p class="no-data">No transactions found for this period</p>';
-      return;
-    }
-
-    container.innerHTML = ledger.map(t => txnRow(t, true)).join('');
-
-    // Balance chart
+    // Chart
     renderBalanceChart(ledger);
   }
 
   function renderBalanceChart(ledger) {
     const canvas = document.getElementById('balanceChart');
     if (!canvas || !window.Chart) return;
-
     const sorted = [...ledger].sort((a, b) => (a.date || 0) - (b.date || 0));
+    if (sorted.length === 0) return;
+
     const labels = sorted.map(e => e.date ? e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '');
     const balances = sorted.map(e => e.convertedBalance);
 
     if (canvas._chart) canvas._chart.destroy();
-
     canvas._chart = new Chart(canvas, {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          label: 'Balance (' + dataManager.displayCurrency + ')',
+          label: 'Balance',
           data: balances,
-          borderColor: CONFIG.CHART_COLORS.PRIMARY,
-          backgroundColor: 'rgba(37, 99, 235, 0.1)',
-          fill: true, tension: 0.2, pointRadius: 1
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.08)',
+          fill: true, tension: 0.3, pointRadius: 1, borderWidth: 2
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { ticks: { maxTicksLimit: 10, color: '#6B7280' }, grid: { color: 'rgba(156,163,175,0.1)' } },
-          y: { ticks: { color: '#6B7280', callback: v => dataManager.formatCurrency(v) }, grid: { color: 'rgba(156,163,175,0.1)' } }
+          x: { ticks: { maxTicksLimit: 8, color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+          y: { ticks: { color: '#64748b', font: { size: 10 }, callback: v => dataManager.formatCurrency(v) }, grid: { color: 'rgba(51,65,85,0.3)' } }
         }
       }
     });
   }
 
-  // ==================== WAGES ====================
-
+  // ==================== WAGES / BILLS / SAVINGS ====================
   function renderWages() {
-    const wages = (dataManager.cache.wages || []);
-    const container = document.getElementById('wagesContent');
-    if (wages.length === 0) {
-      container.innerHTML = '<p class="no-data">No wage data yet. Upload pay statements to #finances.</p>';
-      return;
-    }
-    container.innerHTML = '<div class="transactions-list">' + wages.map(w => {
+    const wages = dataManager.cache.wages || [];
+    const c = document.getElementById('wagesContent');
+    if (!wages.length) { c.innerHTML = '<p class="no-data">No wage data yet</p>'; return; }
+    c.innerHTML = wages.map(w => {
       const cur = w['Currency'] || 'AUD';
       const amt = parseFloat(w['Amount']) || 0;
       return `<div class="txn-row income">
-        <div class="txn-left">
-          <div class="txn-desc">${w['User'] || ''}</div>
-          <div class="txn-meta">${formatDate(w['Date'])} · ${w['Day of Week'] || ''} · ${w['Account'] || ''}</div>
-        </div>
-        <div class="txn-right">
-          <div class="txn-amount positive">${dataManager.formatCurrency(dataManager.convert(amt, cur))}</div>
-          ${cur !== dataManager.displayCurrency ? `<div class="txn-native">${dataManager.formatCurrency(amt, cur)} ${cur}</div>` : ''}
-        </div>
+        <div class="txn-left"><div class="txn-desc">${w['User'] || ''}</div>
+        <div class="txn-meta">${fmtDate(w['Date'])} · ${w['Day of Week'] || ''} · ${w['Account'] || ''}</div></div>
+        <div class="txn-right"><div class="txn-amount positive">${dataManager.formatCurrency(dataManager.convert(amt, cur))}</div>
+        ${cur !== dataManager.displayCurrency ? `<div class="txn-native">${dataManager.formatCurrency(amt, cur)} ${cur}</div>` : ''}</div>
       </div>`;
-    }).join('') + '</div>';
+    }).join('');
   }
-
-  // ==================== BILLS ====================
 
   function renderBills() {
-    const bills = (dataManager.cache.bills || []);
-    const container = document.getElementById('billsContent');
-    if (bills.length === 0) {
-      container.innerHTML = '<p class="no-data">No recurring bills detected yet.</p>';
-      return;
-    }
-    container.innerHTML = '<div class="transactions-list">' + bills.map(b => {
+    const bills = dataManager.cache.bills || [];
+    const c = document.getElementById('billsContent');
+    if (!bills.length) { c.innerHTML = '<p class="no-data">No recurring bills detected yet</p>'; return; }
+    c.innerHTML = bills.map(b => {
       const cur = b['Currency'] || 'AUD';
       const amt = Math.abs(parseFloat(b['Amount'])) || 0;
-      const status = b['Status'] || 'Active';
-      const statusClass = status === 'Overdue' ? 'overdue' : status === 'Due Soon' ? 'due-soon' : '';
-      return `<div class="txn-row ${statusClass}">
-        <div class="txn-left">
-          <div class="txn-desc">${b['Bill Name'] || ''}</div>
-          <div class="txn-meta">${b['Frequency'] || 'Monthly'} · ${b['Category'] || ''} · Next: ${formatDate(b['Next Due Date'])}</div>
-        </div>
-        <div class="txn-right">
-          <div class="txn-amount negative">${dataManager.formatCurrency(dataManager.convert(amt, cur))}</div>
-          <div class="txn-status ${statusClass}">${status}</div>
-        </div>
+      const st = (b['Status'] || 'Active');
+      const sc = st === 'Overdue' ? 'overdue' : st === 'Due Soon' ? 'due-soon' : '';
+      return `<div class="txn-row">
+        <div class="txn-left"><div class="txn-desc">${b['Bill Name'] || ''}</div>
+        <div class="txn-meta">${b['Frequency'] || 'Monthly'} · ${b['Category'] || ''} · Next: ${fmtDate(b['Next Due Date'])}</div></div>
+        <div class="txn-right"><div class="txn-amount negative">${dataManager.formatCurrency(dataManager.convert(amt, cur))}</div>
+        <div class="txn-status ${sc}">${st}</div></div>
       </div>`;
-    }).join('') + '</div>';
+    }).join('');
   }
 
-  // ==================== SAVINGS ====================
-
   function renderSavings() {
-    const goals = (dataManager.cache.savings || []);
-    const container = document.getElementById('savingsContent');
-    if (goals.length === 0) {
-      container.innerHTML = '<p class="no-data">No savings goals set up yet.</p>';
-      return;
-    }
-    container.innerHTML = goals.map(g => {
+    const goals = dataManager.cache.savings || [];
+    const c = document.getElementById('savingsContent');
+    if (!goals.length) { c.innerHTML = '<p class="no-data">No savings goals set up yet</p>'; return; }
+    c.innerHTML = goals.map(g => {
       const target = parseFloat(g['Target Amount']) || 1;
       const current = parseFloat(g['Current Amount']) || 0;
-      const pct = Math.min(100, (current / target * 100)).toFixed(1);
-      return `<div class="card goal-card">
-        <div class="card-body">
-          <div class="goal-header">
-            <div><div class="goal-name">${g['Goal Name'] || ''}</div><div class="goal-desc">${g['Description'] || ''}</div></div>
-            <div class="goal-pct">${pct}%</div>
-          </div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <div class="goal-amounts">${dataManager.formatCurrency(current)} / ${dataManager.formatCurrency(target)}</div>
-        </div>
+      const pct = Math.min(100, current / target * 100).toFixed(1);
+      return `<div class="goal-card">
+        <div class="goal-top"><div><div class="goal-name">${g['Goal Name'] || ''}</div><div class="goal-desc">${g['Description'] || ''}</div></div>
+        <div class="goal-pct">${pct}%</div></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="goal-amounts">${dataManager.formatCurrency(current)} / ${dataManager.formatCurrency(target)}</div>
       </div>`;
     }).join('');
   }
 
   // ==================== HELPERS ====================
-
-  function txnRow(t, showBalance) {
-    const isIncome = t.amount > 0;
-    const amountStr = dataManager.formatCurrency(t.convertedAmount);
-    const nativeStr = t.currency !== dataManager.displayCurrency
-      ? `<div class="txn-native">${dataManager.formatCurrency(t.amount, t.currency)} ${t.currency}</div>`
-      : '';
-    const balStr = showBalance
-      ? `<div class="txn-balance">Bal: ${dataManager.formatCurrency(t.convertedBalance)}</div>`
-      : '';
-
-    return `<div class="txn-row ${isIncome ? 'income' : 'expense'}">
-      <div class="txn-left">
-        <div class="txn-desc">${t.description}</div>
-        <div class="txn-meta">${formatDate(t.date)} · ${t.account} · ${t.category}</div>
-      </div>
-      <div class="txn-right">
-        <div class="txn-amount ${isIncome ? 'positive' : 'negative'}">${isIncome ? '+' : ''}${amountStr}</div>
-        ${nativeStr}
-        ${balStr}
-      </div>
+  function txnRow(t, showBal) {
+    const pos = t.amount > 0;
+    const amt = dataManager.formatCurrency(t.convertedAmount);
+    const native = t.currency !== dataManager.displayCurrency
+      ? `<div class="txn-native">${dataManager.formatCurrency(t.amount, t.currency)} ${t.currency}</div>` : '';
+    const bal = showBal ? `<div class="txn-balance">Bal: ${dataManager.formatCurrency(t.convertedBalance)}</div>` : '';
+    return `<div class="txn-row">
+      <div class="txn-left"><div class="txn-desc">${t.description}</div>
+      <div class="txn-meta">${fmtDate(t.date)} · ${t.account?.replace(/ \(.*\)/, '')} · ${t.category}</div></div>
+      <div class="txn-right"><div class="txn-amount ${pos ? 'positive' : 'negative'}">${pos ? '+' : ''}${amt}</div>${native}${bal}</div>
     </div>`;
   }
 
-  function formatDate(d) {
+  function fmtDate(d) {
     if (!d) return '';
-    const date = new Date(d);
-    if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' });
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: '2-digit' });
   }
 
   function renderFooter() {
-    document.getElementById('dataSourceLabel').textContent =
-      dataManager.dataSource === 'live' ? '🟢 Live' : '🟡 Mock Data';
-    const rate = dataManager.exchangeRate;
-    document.getElementById('exchangeRateLabel').textContent =
-      `£1 = $${(rate.gbpToAud || 1.95).toFixed(2)}`;
+    document.getElementById('dataSourceLabel').textContent = dataManager.dataSource === 'live' ? '🟢 Live' : '🟡 Demo';
+    const r = dataManager.exchangeRate;
+    document.getElementById('exchangeRateLabel').textContent = `£1 = $${(r.gbpToAud || 1.95).toFixed(2)}`;
   }
-
-  // Setup history account filters
-  document.addEventListener('DOMContentLoaded', () => {
-    const hf = document.getElementById('historyAccountFilters');
-    if (!hf) return;
-    CONFIG.ACCOUNTS.forEach(a => {
-      const label = document.createElement('label');
-      label.className = 'account-filter-item compact';
-      label.innerHTML = `<input type="checkbox" value="${a.name}" checked> <span>${a.icon} ${a.name.replace(/ \(.*\)/,'')}</span>`;
-      label.querySelector('input').addEventListener('change', () => renderHistory());
-      hf.appendChild(label);
-    });
-  });
 
 })();
