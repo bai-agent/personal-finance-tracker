@@ -3,20 +3,32 @@
   'use strict';
   var sa = CONFIG.ACCOUNTS.map(a=>a.name), sDays=7, sMonth='', sfOpen=false, tab='overview';
   var dm = dataManager;
-  var allTxns = []; // cached full transaction set for insights
+  var allTxns = []; // cached full transaction set
+  var overviewPeriod = 30;
 
   document.addEventListener('DOMContentLoaded', async()=>{
     FinanceViews.init(dm);
     wireNav(); wireCur(); wireRef();
     buildFilter(); wirePeriods(); wireMonth();
+    showGlobalSpinner();
     await dm.fetchAll();
     // Load all transactions for insights/charts
     try {
       var raw = await dm.fetchTransactions(null, null);
       allTxns = raw.map(e => trRow(e)).sort((a,b)=>(b.date||0)-(a.date||0));
     } catch(e) { allTxns = dm.getTransactions(); }
+    hideGlobalSpinner();
     renderAll();
   });
+
+  function showGlobalSpinner() {
+    document.querySelectorAll('.empty').forEach(el => {
+      el.innerHTML = '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+    });
+  }
+  function hideGlobalSpinner() {
+    // Content will be replaced by render functions
+  }
 
   function renderAll(){renderOverview();renderAccts();popMonths();renderFtr()}
 
@@ -27,7 +39,7 @@
     var h=location.hash.slice(1);
     if(h&&document.getElementById(h)){n.value=h;go(h)}
   }
-  window.go = go; // expose for views
+  window.go = go;
   function go(t){
     tab=t;
     document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
@@ -62,15 +74,16 @@
   function wireRef(){
     var b=document.getElementById('refBtn');
     b.onclick=async()=>{
-      b.style.animation='spin .8s linear infinite';
+      b.innerHTML='<div class="spinner-ring" style="width:18px;height:18px;border-width:2px;margin:0"></div>';
       await dm.fetchAll();
       try {
         var raw = await dm.fetchTransactions(null, null);
         allTxns = raw.map(e => trRow(e)).sort((a,b)=>(b.date||0)-(a.date||0));
       } catch(e) {}
+      b.textContent='🔄';
       renderAll();
       if(tab==='statements')renderStmt();
-      b.style.animation='none';
+      if(tab==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
     };
   }
 
@@ -101,9 +114,9 @@
 
   // PERIODS
   function wirePeriods(){
-    document.querySelectorAll('.pbtn').forEach(b=>{
+    document.querySelectorAll('#statements .pbtn').forEach(b=>{
       b.onclick=()=>{
-        document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('on'));
+        document.querySelectorAll('#statements .pbtn').forEach(x=>x.classList.remove('on'));
         b.classList.add('on');
         document.getElementById('sMon').value='';document.getElementById('sMon').classList.remove('on');
         sDays=parseInt(b.dataset.d);sMonth='';renderStmt();
@@ -113,11 +126,11 @@
   function wireMonth(){
     document.getElementById('sMon').onchange=e=>{
       if(e.target.value){
-        document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('on'));
+        document.querySelectorAll('#statements .pbtn').forEach(x=>x.classList.remove('on'));
         e.target.classList.add('on');sMonth=e.target.value;sDays=0;
       }else{
         e.target.classList.remove('on');
-        document.querySelector('.pbtn[data-d="7"]').classList.add('on');
+        document.querySelector('#statements .pbtn[data-d="7"]').classList.add('on');
         sMonth='';sDays=7;
       }
       renderStmt();
@@ -126,7 +139,6 @@
   function popMonths(){
     var ldg=dm.getTransactions(),ms=new Set();
     ldg.forEach(e=>{if(e.date)ms.add(e.date.getFullYear()+'-'+String(e.date.getMonth()+1).padStart(2,'0'))});
-    // Also check allTxns
     allTxns.forEach(e=>{if(e.date)ms.add(e.date.getFullYear()+'-'+String(e.date.getMonth()+1).padStart(2,'0'))});
     var sel=document.getElementById('sMon');while(sel.options.length>1)sel.remove(1);
     [...ms].sort().reverse().forEach(m=>{
@@ -139,10 +151,11 @@
   // OVERVIEW
   function renderOverview(){
     var a=dm.getAccounts(),l=allTxns.length ? allTxns : dm.getTransactions();
+    var filtered = FinanceViews.filterByPeriod(l, overviewPeriod);
     var tot=a.reduce((s,x)=>s+x.balance,0);
     var h=document.getElementById('totalBal');h.textContent=dm.formatCurrency(tot);h.className='hero-amt '+(tot>=0?'pos':'neg');
     var inc,exp,savRate;
-    if(l.length>0){inc=l.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);exp=Math.abs(l.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));savRate=inc>0?((inc-exp)/inc*100).toFixed(0):'--';}
+    if(filtered.length>0){inc=filtered.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);exp=Math.abs(filtered.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));savRate=inc>0?((inc-exp)/inc*100).toFixed(0):'--';}
     else{inc=dm.getDashboardMetric('Monthly Income');exp=dm.getDashboardMetric('Monthly Expenses');var sr=dm.getDashboardMetric('Savings Rate');savRate=sr>0&&sr<1?(sr*100).toFixed(0):inc>0?((inc-exp)/inc*100).toFixed(0):'--';}
     document.getElementById('sInc').textContent=dm.formatCurrency(inc);
     document.getElementById('sExp').textContent=dm.formatCurrency(exp);
@@ -157,12 +170,22 @@
     document.getElementById('jF').textContent=b('Joint (Starling)');
     document.getElementById('jC').textContent=b('Credit Card (Capital One)');
 
-    // Overview charts
-    FinanceCharts.categoryDonut('ovCatChart', l, dm);
-    FinanceCharts.incomeExpenseBar('ovIncExpChart', dm.cache.history || [], dm);
-    FinanceCharts.spendingTrend('ovTrendChart', dm.cache.history || [], dm);
+    // Overview period toggle
+    var toggleEl = document.getElementById('ovPeriodToggle');
+    if (toggleEl) {
+      toggleEl.innerHTML = FinanceViews.buildPeriodToggle('ovPeriodInner', overviewPeriod, null);
+      FinanceViews.wirePeriodToggle('ovPeriodInner', (days) => {
+        overviewPeriod = days;
+        renderOverview();
+      });
+    }
 
-    // Mini calendar on overview
+    // Overview charts — use ALL transactions, filter by period
+    FinanceCharts.categoryDonut('ovCatChart', filtered, dm);
+    FinanceCharts.incomeExpenseBar('ovIncExpChart', l, dm);
+    FinanceCharts.spendingTrend('ovTrendChart', filtered, dm);
+
+    // Mini calendar
     FinanceViews.renderMiniCalendar(dm.cache.bills || []);
 
     // Upcoming bills list
@@ -193,14 +216,13 @@
       var d = new Date(b['Next Due Date']);
       var days = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
       var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
-      return `<div class="bill-list-item"><div class="bill-left"><div class="bill-name">${b['Bill Name'] || ''}</div><div class="bill-meta">${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days'} · ${formatDate(b['Next Due Date'])}${b['Account'] ? ' · <span class="acct-tag" style="background:' + acctColor + '">' + (b['Account'] || '').replace(/ \(.*\)/, '') + '</span>' : ''}</div></div><div class="bill-right"><div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div></div></div>`;
+      return `<div class="bill-list-item"><div class="bill-left"><div class="bill-name">${b['Bill Name'] || ''}</div><div class="bill-meta">${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days'} · ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${(b['Account'] || '').replace(/ \(.*\)/, '')}</span></div></div><div class="bill-right"><div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div></div></div>`;
     }).join('');
   }
 
   // ACCOUNTS
   function renderAccts(){
     var a=dm.getAccounts(),g=document.getElementById('aCards');
-    // Reset detail view
     var detail = document.getElementById('acctDetail');
     if (detail) { detail.classList.remove('on'); detail.innerHTML = ''; }
     g.classList.remove('hide');
@@ -215,16 +237,18 @@
         '<div class="chg '+(x.change>=0?'pos':'neg')+'">'+(x.change>=0?'↗':'↘')+' '+dm.formatCurrency(Math.abs(x.change))+'</div></div>';
     }).join('');
 
-    // Click handler for account cards
     g.querySelectorAll('.acard').forEach(card => {
       card.onclick = () => FinanceViews.openAccountDetail(card.dataset.acct, go);
     });
   }
 
   // STATEMENTS
+  var stmtPage = 1;
+  var stmtExpanded = false;
+
   async function renderStmt(){
     var el=document.getElementById('stmtList'),sm=document.getElementById('stmtSum');
-    el.innerHTML='<div class="empty">Loading…</div>';
+    el.innerHTML = FinanceViews.spinner();
     var data;
     if(sMonth){
       var raw=await dm.fetchTransactions(sMonth,sa.length<8?sa:null);
@@ -239,7 +263,9 @@
     var tIn=data.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
     var tOut=Math.abs(data.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
     sm.innerHTML='In: <b class="pos">'+dm.formatCurrency(tIn)+'</b> &nbsp; Out: <b class="neg">'+dm.formatCurrency(tOut)+'</b> &nbsp; '+data.length+' txns';
-    el.innerHTML=data.length?data.map(t=>txHtml(t, dm, true)).join(''):'<div class="empty">No transactions found</div>';
+
+    // Use expandable transaction list
+    FinanceViews.renderTransactionList('stmtList', data, dm);
     FinanceCharts.balanceLine('balChart', data, dm);
   }
 

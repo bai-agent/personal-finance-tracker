@@ -1,8 +1,11 @@
 // Views module - handles account detail, bills calendar, projections, insights
 const FinanceViews = {
   dm: null,
-  calendarMonth: null, // {year, month} for bills calendar navigation
-  miniCalMonth: null,  // for overview mini calendar
+  calendarMonth: null,
+  miniCalMonth: null,
+  overviewPeriod: 30,
+  insightsPeriod: 30,
+  acctDetailPeriod: 30,
 
   init(dataManager) {
     this.dm = dataManager;
@@ -11,9 +14,117 @@ const FinanceViews = {
     this.miniCalMonth = { year: now.getFullYear(), month: now.getMonth() };
   },
 
+  // ===== PERIOD TOGGLE BUILDER =====
+  buildPeriodToggle(containerId, currentDays, callback) {
+    var html = '<div class="period-toggle" id="' + containerId + '">';
+    [7, 30, 90].forEach(d => {
+      html += '<button class="pbtn' + (d === currentDays ? ' on' : '') + '" data-d="' + d + '">' + d + 'D</button>';
+    });
+    html += '</div>';
+    return html;
+  },
+
+  wirePeriodToggle(containerId, callback) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.querySelectorAll('.pbtn').forEach(b => {
+      b.onclick = () => {
+        el.querySelectorAll('.pbtn').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        callback(parseInt(b.dataset.d));
+      };
+    });
+  },
+
+  // ===== FILTER TRANSACTIONS BY PERIOD =====
+  filterByPeriod(txns, days) {
+    if (!days || days <= 0) return txns;
+    var cut = new Date();
+    cut.setDate(cut.getDate() - days);
+    cut.setHours(0, 0, 0, 0);
+    return txns.filter(t => t.date && t.date >= cut);
+  },
+
+  // ===== LOADING SPINNER =====
+  spinner() {
+    return '<div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div>';
+  },
+
+  // ===== EXPANDABLE TRANSACTION LIST =====
+  renderTransactionList(containerId, allTxns, dm, opts) {
+    opts = opts || {};
+    var showAccount = opts.showAccount !== false;
+    var el = document.getElementById(containerId);
+    if (!el) return;
+
+    var total = allTxns.length;
+    if (!total) { el.innerHTML = '<div class="empty">No transactions</div>'; return; }
+
+    var pageSize = 5;
+    var expanded = false;
+    var currentPage = 1;
+    var maxExpanded = 20;
+    var maxTotal = 100;
+
+    function render() {
+      var start, end, data;
+      if (!expanded) {
+        data = allTxns.slice(0, pageSize);
+      } else {
+        start = (currentPage - 1) * maxExpanded;
+        end = Math.min(start + maxExpanded, Math.min(total, maxTotal));
+        data = allTxns.slice(start, end);
+      }
+
+      var html = '<div class="txn-section-hd' + (expanded ? ' expanded' : '') + '" id="' + containerId + '_hd">';
+      html += '<h3>📄 Transactions</h3>';
+      html += '<span class="txn-count">' + (expanded ? 'Page ' + currentPage + ' · ' : '') + total + ' total <span class="txn-chev">▾</span></span>';
+      html += '</div>';
+      html += '<div class="fade-in">';
+      html += data.map(t => txHtml(t, dm, true)).join('');
+      html += '</div>';
+
+      if (expanded) {
+        var totalPages = Math.ceil(Math.min(total, maxTotal) / maxExpanded);
+        if (totalPages > 1) {
+          html += '<div class="pagination">';
+          for (var i = 1; i <= totalPages; i++) {
+            html += '<button class="pg-btn' + (i === currentPage ? ' active' : '') + '" data-pg="' + i + '">' + i + '</button>';
+          }
+          html += '</div>';
+        }
+      }
+
+      el.innerHTML = html;
+
+      // Wire header click
+      var hd = document.getElementById(containerId + '_hd');
+      if (hd) {
+        hd.onclick = () => {
+          expanded = !expanded;
+          currentPage = 1;
+          render();
+        };
+      }
+
+      // Wire pagination
+      el.querySelectorAll('.pg-btn').forEach(b => {
+        b.onclick = (e) => {
+          e.stopPropagation();
+          currentPage = parseInt(b.dataset.pg);
+          render();
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+      });
+    }
+
+    render();
+  },
+
   // ===== ACCOUNT DETAIL VIEW =====
   openAccountDetail(accountName, goFn) {
     var dm = this.dm;
+    var self = this;
     var grid = document.getElementById('aCards');
     var detail = document.getElementById('acctDetail');
     grid.classList.add('hide');
@@ -29,6 +140,29 @@ const FinanceViews = {
       ? '<div class="hero-sub">' + dm.formatCurrency(acct.nativeBalance, acct.nativeCurrency) + ' ' + acct.nativeCurrency + '</div>'
       : '';
 
+    // Get bills for this account
+    var bills = (dm.cache.bills || []).filter(b => b['Account'] === accountName);
+    var now = new Date();
+    var thisMonth = now.getMonth();
+    var thisYear = now.getFullYear();
+    var billsThisMonth = bills.filter(b => {
+      var d = new Date(b['Next Due Date']);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+    var billsTotal = billsThisMonth.reduce((s, b) => s + Math.abs(parseFloat(b['Amount']) || 0), 0);
+
+    var billsHtml = '';
+    if (bills.length) {
+      billsHtml = '<div class="pnl"><div class="pnl-hd"><h3>📋 Upcoming Bills</h3></div>';
+      billsHtml += '<div class="bill-stats-tile"><div><div class="bst-val">' + billsThisMonth.length + ' bill' + (billsThisMonth.length !== 1 ? 's' : '') + '</div><div class="bst-lbl">this month</div></div><div><div class="bst-val">' + dm.formatCurrency(dm.convert(billsTotal, acct.nativeCurrency)) + '</div><div class="bst-lbl">total due</div></div></div>';
+      billsHtml += bills.sort((a, b) => new Date(a['Next Due Date']) - new Date(b['Next Due Date'])).map(b => {
+        var c = b['Currency'] || acct.nativeCurrency;
+        var a2 = Math.abs(parseFloat(b['Amount'])) || 0;
+        return '<div class="bill-compact"><div class="bill-compact-left"><div class="bill-compact-name">' + (b['Bill Name'] || '') + '</div><div class="bill-compact-meta">' + (b['Frequency'] || 'Monthly') + ' · ' + formatDate(b['Next Due Date']) + '</div></div><div class="bill-compact-amt">' + dm.formatCurrency(dm.convert(a2, c)) + '</div></div>';
+      }).join('');
+      billsHtml += '</div>';
+    }
+
     detail.innerHTML = `
       <button class="back-btn" id="acctBack">← Back to Accounts</button>
       <div class="hero">
@@ -37,9 +171,11 @@ const FinanceViews = {
         ${nv}
         <div class="hero-sub">${cfg.purpose || ''} · ${acct.nativeCurrency}</div>
       </div>
+      ${this.buildPeriodToggle('adPeriodToggle', this.acctDetailPeriod, null)}
       <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w"><canvas id="adBalChart"></canvas></div></div>
       <div class="pnl"><div class="pnl-hd"><h3>Spending by Category</h3></div><div class="chart-w"><canvas id="adCatChart"></canvas></div></div>
-      <div class="pnl"><div class="pnl-hd"><h3>Transactions</h3></div><div class="pnl-bd" id="adTxns"><div class="empty">Loading…</div></div></div>
+      ${billsHtml}
+      <div class="pnl" id="adTxnWrap"><div id="adTxns">${this.spinner()}</div></div>
     `;
 
     document.getElementById('acctBack').onclick = () => {
@@ -47,11 +183,17 @@ const FinanceViews = {
       grid.classList.remove('hide');
     };
 
+    this.wirePeriodToggle('adPeriodToggle', (days) => {
+      self.acctDetailPeriod = days;
+      self.loadAccountTransactions(accountName);
+    });
+
     this.loadAccountTransactions(accountName);
   },
 
   async loadAccountTransactions(accountName) {
     var dm = this.dm;
+    var self = this;
     try {
       var raw = await dm.fetchTransactions(null, [accountName]);
       var txns = raw.map(e => {
@@ -69,15 +211,10 @@ const FinanceViews = {
         };
       }).sort((a, b) => (b.date || 0) - (a.date || 0));
 
-      FinanceCharts.accountBalanceLine('adBalChart', txns, dm);
-      FinanceCharts.categoryDonut('adCatChart', txns, dm);
-
-      var el = document.getElementById('adTxns');
-      if (el) {
-        el.innerHTML = txns.length
-          ? txns.slice(0, 50).map(t => txHtml(t, dm, true)).join('')
-          : '<div class="empty">No transactions</div>';
-      }
+      var filtered = this.filterByPeriod(txns, this.acctDetailPeriod);
+      FinanceCharts.accountBalanceLine('adBalChart', filtered, dm);
+      FinanceCharts.categoryDonut('adCatChart', filtered, dm);
+      this.renderTransactionList('adTxns', filtered, dm);
     } catch (err) {
       console.error('Account detail load failed:', err);
       var el = document.getElementById('adTxns');
@@ -94,13 +231,10 @@ const FinanceViews = {
     var daysInMonth = new Date(year, month + 1, 0).getDate();
     var monthName = new Date(year, month).toLocaleString('en-AU', { month: 'long', year: 'numeric' });
 
-    // Map bills to dates - handle recurring bills across months
     var billsByDate = {};
     (bills || []).forEach(b => {
       var d = new Date(b['Next Due Date']);
       if (isNaN(d.getTime())) return;
-      // Check if bill falls in this month
-      var freq = (b['Frequency'] || 'Monthly').toLowerCase();
       var billDates = this._getBillDatesForMonth(b, year, month);
       billDates.forEach(bd => {
         var key = bd.getDate() + '-' + bd.getMonth() + '-' + bd.getFullYear();
@@ -140,11 +274,9 @@ const FinanceViews = {
     var dates = [];
 
     if (freq === 'weekly') {
-      // Generate all weekly occurrences in this month
       var start = new Date(year, month, 1);
       var end = new Date(year, month + 1, 0);
       var cur = new Date(d);
-      // Go back to find first occurrence before/in this month
       while (cur > end) cur.setDate(cur.getDate() - 7);
       while (cur < start) cur.setDate(cur.getDate() + 7);
       while (cur <= end) {
@@ -171,7 +303,6 @@ const FinanceViews = {
         dates.push(new Date(year, month, d.getDate()));
       }
     } else {
-      // Monthly default
       var dayOfMonth = Math.min(d.getDate(), new Date(year, month + 1, 0).getDate());
       dates.push(new Date(year, month, dayOfMonth));
     }
@@ -182,9 +313,7 @@ const FinanceViews = {
     var dm = this.dm;
     var parts = dateStr.split('-');
     var year = parseInt(parts[0]), month = parseInt(parts[1]), day = parseInt(parts[2]);
-    var key = day + '-' + month + '-' + year;
 
-    // Find bills for this date
     var dayBills = [];
     (bills || []).forEach(b => {
       var billDates = this._getBillDatesForMonth(b, year, month);
@@ -195,7 +324,6 @@ const FinanceViews = {
 
     if (!dayBills.length) return;
 
-    // Remove existing detail panel
     var existing = container.querySelector('.cal-detail-panel');
     if (existing) existing.remove();
 
@@ -238,7 +366,6 @@ const FinanceViews = {
       <div class="cal-grid">${cal.calCells}</div>
     </div>`;
 
-    // Nav handlers
     document.getElementById('mcPrev').onclick = () => {
       self.miniCalMonth.month--;
       if (self.miniCalMonth.month < 0) { self.miniCalMonth.month = 11; self.miniCalMonth.year--; }
@@ -250,11 +377,9 @@ const FinanceViews = {
       self.renderMiniCalendar(bills);
     };
 
-    // Click handlers for dates with bills
     el.querySelectorAll('.cal-cell.has-bill').forEach(cell => {
       cell.onclick = () => {
         var dateStr = cell.dataset.calDate;
-        // Toggle - remove if same date clicked
         var existing = el.querySelector('.cal-detail-panel');
         if (existing && existing.dataset.date === dateStr) { existing.remove(); return; }
         if (existing) existing.remove();
@@ -277,7 +402,6 @@ const FinanceViews = {
 
     var cal = this._buildCalendarHtml(bills, this.calendarMonth, false);
 
-    // Bill list with status
     var now = new Date();
     var billList = bills.map(b => {
       var c = b['Currency'] || 'AUD';
@@ -288,7 +412,7 @@ const FinanceViews = {
       return `<div class="bill-list-item">
         <div class="bill-left">
           <div class="bill-name">${b['Bill Name'] || ''}</div>
-          <div class="bill-meta">${b['Frequency'] || 'Monthly'} · Next: ${formatDate(b['Next Due Date'])}${b['Account'] ? ' · <span class="acct-tag" style="background:' + acctColor + '">' + (b['Account'] || '').replace(/ \(.*\)/, '') + '</span>' : ''}</div>
+          <div class="bill-meta">${b['Frequency'] || 'Monthly'} · Next: ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${(b['Account'] || '').replace(/ \(.*\)/, '')}</span></div>
         </div>
         <div class="bill-right">
           <div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div>
@@ -309,7 +433,6 @@ const FinanceViews = {
       <div style="padding:0 18px 14px">${billList}</div>
     `;
 
-    // Nav handlers
     document.getElementById('bcPrev').onclick = () => {
       self.calendarMonth.month--;
       if (self.calendarMonth.month < 0) { self.calendarMonth.month = 11; self.calendarMonth.year--; }
@@ -321,7 +444,6 @@ const FinanceViews = {
       self.renderBillsCalendar(bills);
     };
 
-    // Click handlers for dates with bills
     var wrap = document.getElementById('billsCalWrap');
     wrap.querySelectorAll('.cal-cell.has-bill').forEach(cell => {
       cell.onclick = () => {
@@ -405,7 +527,7 @@ const FinanceViews = {
     FinanceCharts.savingsRateTrend('savRateChart', history, dm);
   },
 
-  // ===== PROJECTIONS — "Where to Move Money" Smart Advisor =====
+  // ===== PROJECTIONS =====
   renderProjections(projections, bills, accounts) {
     var dm = this.dm;
     var el = document.getElementById('projContent');
@@ -415,12 +537,11 @@ const FinanceViews = {
     var now = new Date();
     var savings = dm.cache.savings || [];
 
-    // Upcoming bills in 7, 14, 30 days
     var billsNext7 = [], billsNext14 = [], billsNext30 = [];
     (bills || []).forEach(b => {
       var d = new Date(b['Next Due Date']);
       var diff = (d - now) / (1000 * 60 * 60 * 24);
-      if (diff < 0) diff = 0; // overdue
+      if (diff < 0) diff = 0;
       var c = b['Currency'] || 'AUD';
       var amt = dm.convert(Math.abs(parseFloat(b['Amount']) || 0), c);
       var entry = { ...b, convertedAmt: amt, daysUntil: diff, dueDate: d };
@@ -433,7 +554,6 @@ const FinanceViews = {
     var total14 = billsNext14.reduce((s, b) => s + b.convertedAmt, 0);
     var total30 = billsNext30.reduce((s, b) => s + b.convertedAmt, 0);
 
-    // Summary cards
     var summaryHtml = `
       <div class="advisor-summary">
         <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total7)}</div><div class="advisor-stat-lbl">Next 7 days</div><div class="advisor-stat-count">${billsNext7.length} bill${billsNext7.length !== 1 ? 's' : ''}</div></div>
@@ -441,7 +561,6 @@ const FinanceViews = {
         <div class="advisor-stat"><div class="advisor-stat-val">${dm.formatCurrency(total30)}</div><div class="advisor-stat-lbl">Next 30 days</div><div class="advisor-stat-count">${billsNext30.length} bill${billsNext30.length !== 1 ? 's' : ''}</div></div>
       </div>`;
 
-    // Group bills by account for shortfall analysis
     var billsByAcct = {};
     billsNext30.forEach(b => {
       var acct = b['Account'] || 'Joint (Commonwealth)';
@@ -450,53 +569,29 @@ const FinanceViews = {
       billsByAcct[acct].bills.push(b);
     });
 
-    // Generate transfer recommendations
     var transfers = [];
     Object.entries(billsByAcct).forEach(([acctName, data]) => {
       var acct = accts.find(a => a.name === acctName);
       if (!acct) return;
       if (acct.balance < data.total) {
         var shortfall = data.total - acct.balance;
-        // Find nearest due bill for urgency
         var nearestBill = data.bills.sort((a, b) => a.daysUntil - b.daysUntil)[0];
         var urgency = nearestBill.daysUntil <= 0 ? 'overdue' : nearestBill.daysUntil <= 7 ? 'urgent' : nearestBill.daysUntil <= 14 ? 'soon' : 'planned';
-
-        // Find best source account
         var surplus = accts.filter(a => a.name !== acctName && a.balance > shortfall).sort((a, b) => b.balance - a.balance);
         if (surplus.length) {
           var dueLabel = nearestBill.daysUntil <= 0 ? 'OVERDUE' : nearestBill.daysUntil <= 1 ? 'tomorrow' : 'by ' + nearestBill.dueDate.toLocaleDateString('en-AU', { weekday: 'long' });
-          transfers.push({
-            from: surplus[0].name,
-            to: acctName,
-            amount: shortfall,
-            reason: `Cover ${data.bills.length} upcoming bill${data.bills.length > 1 ? 's' : ''} (${dm.formatCurrency(data.total)} due)`,
-            urgency: urgency,
-            deadline: dueLabel,
-            billNames: data.bills.map(b => b['Bill Name']).join(', ')
-          });
+          transfers.push({ from: surplus[0].name, to: acctName, amount: shortfall, reason: `Cover ${data.bills.length} upcoming bill${data.bills.length > 1 ? 's' : ''} (${dm.formatCurrency(data.total)} due)`, urgency, deadline: dueLabel, billNames: data.bills.map(b => b['Bill Name']).join(', ') });
         } else {
-          // No single account can cover - flag it
-          transfers.push({
-            from: null,
-            to: acctName,
-            amount: shortfall,
-            reason: `Shortfall for upcoming bills — no single account has enough funds!`,
-            urgency: 'overdue',
-            deadline: 'IMMEDIATE',
-            billNames: data.bills.map(b => b['Bill Name']).join(', ')
-          });
+          transfers.push({ from: null, to: acctName, amount: shortfall, reason: `Shortfall for upcoming bills — no single account has enough funds!`, urgency: 'overdue', deadline: 'IMMEDIATE', billNames: data.bills.map(b => b['Bill Name']).join(', ') });
         }
       }
     });
 
-    // Savings goal progress
     var savingsHtml = '';
     if (savings.length) {
       var totalSaved = savings.reduce((s, g) => s + (parseFloat(g['Current Amount']) || 0), 0);
       var totalTarget = savings.reduce((s, g) => s + (parseFloat(g['Target Amount']) || 0), 0);
       var remaining = totalTarget - totalSaved;
-      var saverAcct = accts.find(a => a.name === 'Joint Saver (Commonwealth)');
-      var saverBal = saverAcct ? saverAcct.balance : 0;
 
       savingsHtml = `<div class="pnl"><div class="pnl-hd"><h3>💎 Savings Goal Progress</h3></div><div style="padding:14px 18px">`;
       savings.forEach(g => {
@@ -504,32 +599,18 @@ const FinanceViews = {
         var tgt = parseFloat(g['Target Amount']) || 1;
         var pc = Math.min(100, cur / tgt * 100).toFixed(1);
         var needed = Math.max(0, tgt - cur);
-        savingsHtml += `<div class="advisor-goal">
-          <div class="advisor-goal-top"><span class="advisor-goal-name">${g['Goal Name']}</span><span class="advisor-goal-pc">${pc}%</span></div>
-          <div class="pbar"><div class="pfill" style="width:${pc}%"></div></div>
-          <div class="advisor-goal-info">${dm.formatCurrency(cur)} / ${dm.formatCurrency(tgt)} · ${dm.formatCurrency(needed)} to go</div>
-        </div>`;
+        savingsHtml += `<div class="advisor-goal"><div class="advisor-goal-top"><span class="advisor-goal-name">${g['Goal Name']}</span><span class="advisor-goal-pc">${pc}%</span></div><div class="pbar"><div class="pfill" style="width:${pc}%"></div></div><div class="advisor-goal-info">${dm.formatCurrency(cur)} / ${dm.formatCurrency(tgt)} · ${dm.formatCurrency(needed)} to go</div></div>`;
       });
       if (remaining > 0) {
-        // Suggest moving money to savings
         var bestSource = accts.filter(a => a.purpose !== 'Savings' && a.balance > 200).sort((a, b) => b.balance - a.balance);
         if (bestSource.length) {
-          var suggestAmt = Math.min(remaining, bestSource[0].balance * 0.2); // Suggest 20% of best account
-          transfers.push({
-            from: bestSource[0].name,
-            to: 'Joint Saver (Commonwealth)',
-            amount: Math.round(suggestAmt),
-            reason: `Contribute to savings goals (${dm.formatCurrency(remaining)} remaining)`,
-            urgency: 'planned',
-            deadline: 'when convenient',
-            billNames: 'Savings'
-          });
+          var suggestAmt = Math.min(remaining, bestSource[0].balance * 0.2);
+          transfers.push({ from: bestSource[0].name, to: 'Joint Saver (Commonwealth)', amount: Math.round(suggestAmt), reason: `Contribute to savings goals (${dm.formatCurrency(remaining)} remaining)`, urgency: 'planned', deadline: 'when convenient', billNames: 'Savings' });
         }
       }
       savingsHtml += '</div></div>';
     }
 
-    // Transfer cards
     var transferHtml = '';
     if (transfers.length) {
       transferHtml = transfers.map(t => {
@@ -537,38 +618,21 @@ const FinanceViews = {
         var urgLabel = t.urgency === 'overdue' ? '🔴 OVERDUE' : t.urgency === 'urgent' ? '🟡 This Week' : t.urgency === 'soon' ? '🟡 Soon' : '🟢 Planned';
         var fromLabel = t.from ? t.from.replace(/ \(.*\)/, '') : '⚠️ Multiple sources needed';
         var toLabel = t.to.replace(/ \(.*\)/, '');
-        return `<div class="advisor-card ${urgCls}">
-          <div class="advisor-card-top">
-            <div class="advisor-card-amt">${dm.formatCurrency(t.amount)}</div>
-            <div class="advisor-card-urg">${urgLabel}</div>
-          </div>
-          <div class="advisor-card-route">${fromLabel} → ${toLabel}</div>
-          <div class="advisor-card-reason">${t.reason}</div>
-          <div class="advisor-card-deadline">⏰ ${t.deadline}</div>
-          <div class="advisor-card-bills">${t.billNames}</div>
-        </div>`;
+        return `<div class="advisor-card ${urgCls}"><div class="advisor-card-top"><div class="advisor-card-amt">${dm.formatCurrency(t.amount)}</div><div class="advisor-card-urg">${urgLabel}</div></div><div class="advisor-card-route">${fromLabel} → ${toLabel}</div><div class="advisor-card-reason">${t.reason}</div><div class="advisor-card-deadline">⏰ ${t.deadline}</div><div class="advisor-card-bills">${t.billNames}</div></div>`;
       }).join('');
     } else {
       transferHtml = '<div class="advisor-ok">✅ All accounts look good — no transfers needed right now</div>';
     }
 
-    // Account vs bills breakdown
     var acctBreakdown = accts.map(a => {
       var billsAmt = billsByAcct[a.name] ? billsByAcct[a.name].total : 0;
       var ok = a.balance >= billsAmt;
       var shortfall = ok ? 0 : billsAmt - a.balance;
-      return `<div class="proj-row">
-        <span class="label"><span class="acct-tag" style="background:${FinanceCharts.getAccountColor(a.name)}">${a.name.replace(/ \(.*\)/, '')}</span></span>
-        <span class="value" style="color:${ok ? 'var(--green)' : 'var(--red)'}">
-          ${dm.formatCurrency(a.balance)}${billsAmt > 0 ? ' / ' + dm.formatCurrency(billsAmt) : ''}${!ok ? ' <span style="font-size:.6rem;color:var(--red)">⚠️ -' + dm.formatCurrency(shortfall) + '</span>' : ''}
-        </span>
-      </div>`;
+      return `<div class="proj-row"><span class="label"><span class="acct-tag" style="background:${FinanceCharts.getAccountColor(a.name)}">${a.name.replace(/ \(.*\)/, '')}</span></span><span class="value" style="color:${ok ? 'var(--green)' : 'var(--red)'}">${dm.formatCurrency(a.balance)}${billsAmt > 0 ? ' / ' + dm.formatCurrency(billsAmt) : ''}${!ok ? ' <span style="font-size:.6rem;color:var(--red)">⚠️ -' + dm.formatCurrency(shortfall) + '</span>' : ''}</span></div>`;
     }).join('');
 
     el.innerHTML = `
-      <div class="pnl"><div class="pnl-hd"><h3>💸 Where to Move Money</h3></div>
-        <div style="padding:14px 18px">${summaryHtml}${transferHtml}</div>
-      </div>
+      <div class="pnl"><div class="pnl-hd"><h3>💸 Where to Move Money</h3></div><div style="padding:14px 18px">${summaryHtml}${transferHtml}</div></div>
       ${savingsHtml}
       <div class="pnl"><div class="pnl-hd"><h3>🏦 Account vs Obligations</h3></div><div style="padding:4px 18px">${acctBreakdown}</div></div>
       <div class="pnl"><div class="pnl-hd"><h3>📈 Monthly Projections</h3></div><div class="chart-w"><canvas id="projChart"></canvas></div></div>
@@ -591,7 +655,6 @@ const FinanceViews = {
     var prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     var prevMonth = prevDate.getFullYear() + '-' + String(prevDate.getMonth() + 1).padStart(2, '0');
 
-    // Category spending this month vs last month
     var catsCur = {}, catsPrev = {};
     txns.filter(t => t.amount < 0 && t.date && t.category !== 'Transfer').forEach(t => {
       var key = t.date.getFullYear() + '-' + String(t.date.getMonth() + 1).padStart(2, '0');
@@ -612,47 +675,32 @@ const FinanceViews = {
       var arrow = c.change > 0 ? '↑' : c.change < 0 ? '↓' : '→';
       var cls = c.change > 5 ? 'neg' : c.change < -5 ? 'pos' : '';
       var color = FinanceCharts.getCategoryColor(c.cat);
-      return `<div class="trend-row">
-        <span class="trend-dot" style="background:${color}"></span>
-        <span class="trend-name">${c.cat}</span>
-        <span class="trend-vals">${dm.formatCurrency(c.cur)}</span>
-        <span class="trend-change ${cls}">${arrow} ${Math.abs(c.change).toFixed(0)}%</span>
-      </div>`;
+      return `<div class="trend-row"><span class="trend-dot" style="background:${color}"></span><span class="trend-name">${c.cat}</span><span class="trend-vals">${dm.formatCurrency(c.cur)}</span><span class="trend-change ${cls}">${arrow} ${Math.abs(c.change).toFixed(0)}%</span></div>`;
     }).join('');
 
-    // Generate smart suggestions
     var suggestions = [];
     var totalCurSpend = Object.values(catsCur).reduce((s, v) => s + v, 0);
     var totalPrevSpend = Object.values(catsPrev).reduce((s, v) => s + v, 0);
 
-    // Biggest category
     if (comparisons.length) {
       var biggest = comparisons[0];
       suggestions.push({ icon: '📊', text: `Your biggest expense category is <b>${biggest.cat}</b> at <b>${dm.formatCurrency(biggest.cur)}</b>/month`, type: 'info' });
     }
 
-    // Categories that increased significantly
     comparisons.forEach(c => {
       if (c.change > 20 && c.prev > 50) {
-        var tips = {
-          'Food & Dining': 'consider cooking more at home',
-          'Entertainment': 'look for free activities this week',
-          'Shopping': 'try a no-spend challenge',
-          'Transportation': 'consider carpooling or public transport'
-        };
+        var tips = { 'Food & Dining': 'consider cooking more at home', 'Entertainment': 'look for free activities this week', 'Shopping': 'try a no-spend challenge', 'Transportation': 'consider carpooling or public transport' };
         var tip = tips[c.cat] || 'consider reducing this spending';
         suggestions.push({ icon: '⚠️', text: `<b>${c.cat}</b> spending is up <b class="neg">${c.change.toFixed(0)}%</b> this month — ${tip}`, type: 'warning' });
       }
     });
 
-    // Categories that decreased
     comparisons.forEach(c => {
       if (c.change < -15 && c.prev > 50) {
         suggestions.push({ icon: '🎉', text: `<b>${c.cat}</b> spending is down <b class="pos">${Math.abs(c.change).toFixed(0)}%</b> — great job!`, type: 'success' });
       }
     });
 
-    // Overall spending trend
     if (totalPrevSpend > 0) {
       var overallChange = ((totalCurSpend - totalPrevSpend) / totalPrevSpend * 100);
       if (overallChange > 10) {
@@ -662,7 +710,6 @@ const FinanceViews = {
       }
     }
 
-    // Savings rate estimate
     var income = txns.filter(t => t.amount > 0 && t.date && t.date.getMonth() === now.getMonth() && t.date.getFullYear() === now.getFullYear()).reduce((s, t) => s + t.convertedAmount, 0);
     if (income > 0 && totalCurSpend > 0) {
       var savingsEst = income - totalCurSpend;
@@ -671,13 +718,6 @@ const FinanceViews = {
       var projectedSavings = savingsEst * (daysInMonth / dayOfMonth);
       suggestions.push({ icon: '💰', text: `You're on track to save approximately <b class="pos">${dm.formatCurrency(Math.max(0, projectedSavings))}</b> this month`, type: 'info' });
     }
-
-    // Consistent categories
-    comparisons.forEach(c => {
-      if (Math.abs(c.change) < 10 && c.cur > 100 && c.prev > 100) {
-        suggestions.push({ icon: '📌', text: `<b>${c.cat}</b> spending is consistent at ~<b>${dm.formatCurrency(c.cur)}</b>/month`, type: 'info' });
-      }
-    });
 
     var suggestHtml = suggestions.slice(0, 6).map(s => {
       var bgCls = s.type === 'warning' ? 'suggest-warn' : s.type === 'success' ? 'suggest-good' : 'suggest-info';
@@ -696,17 +736,101 @@ const FinanceViews = {
     `;
   },
 
+  // ===== AI INSIGHTS GENERATOR =====
+  generateAIInsights(txns, dm) {
+    var now = new Date();
+    var thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - now.getDay());
+    var lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    var thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    var lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    var lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    var thisWeekTxns = txns.filter(t => t.date && t.date >= thisWeekStart && t.amount < 0 && t.category !== 'Transfer');
+    var lastWeekTxns = txns.filter(t => t.date && t.date >= lastWeekStart && t.date < thisWeekStart && t.amount < 0 && t.category !== 'Transfer');
+    var thisMonthTxns = txns.filter(t => t.date && t.date >= thisMonthStart && t.amount < 0 && t.category !== 'Transfer');
+    var lastMonthTxns = txns.filter(t => t.date && t.date >= lastMonthStart && t.date <= lastMonthEnd && t.amount < 0 && t.category !== 'Transfer');
+
+    var thisWeekSpend = thisWeekTxns.reduce((s, t) => s + Math.abs(t.convertedAmount), 0);
+    var lastWeekSpend = lastWeekTxns.reduce((s, t) => s + Math.abs(t.convertedAmount), 0);
+    var thisMonthSpend = thisMonthTxns.reduce((s, t) => s + Math.abs(t.convertedAmount), 0);
+    var lastMonthSpend = lastMonthTxns.reduce((s, t) => s + Math.abs(t.convertedAmount), 0);
+
+    var thisMonthIncome = txns.filter(t => t.date && t.date >= thisMonthStart && t.amount > 0).reduce((s, t) => s + t.convertedAmount, 0);
+
+    // Headline
+    var weekChange = lastWeekSpend > 0 ? ((thisWeekSpend - lastWeekSpend) / lastWeekSpend * 100) : 0;
+    var projectedSavings = thisMonthIncome - thisMonthSpend;
+    var headline = '';
+    if (weekChange < -5) headline = `This week: spending down ${Math.abs(weekChange).toFixed(0)}% vs last week`;
+    else if (weekChange > 5) headline = `This week: spending up ${weekChange.toFixed(0)}% vs last week`;
+    else headline = `This week: spending steady vs last week`;
+    if (projectedSavings > 0) headline += `, on track for ${dm.formatCurrency(projectedSavings)} savings`;
+
+    // Category analysis
+    var catThis = {}, catLast = {};
+    thisMonthTxns.forEach(t => { var c = t.category || 'Misc'; catThis[c] = (catThis[c] || 0) + Math.abs(t.convertedAmount); });
+    lastMonthTxns.forEach(t => { var c = t.category || 'Misc'; catLast[c] = (catLast[c] || 0) + Math.abs(t.convertedAmount); });
+
+    var catAnalysis = Object.keys(catThis).map(c => {
+      var cur = catThis[c] || 0;
+      var prev = catLast[c] || 0;
+      var pct = prev > 0 ? ((cur - prev) / prev * 100) : 0;
+      return { cat: c, cur, prev, pct };
+    }).sort((a, b) => b.cur - a.cur);
+
+    // Suggestions
+    var suggestions = [];
+    if (thisMonthSpend > thisMonthIncome * 0.8) suggestions.push('⚠️ Spending is over 80% of income — consider cutting non-essentials');
+    catAnalysis.forEach(c => {
+      if (c.pct > 30 && c.prev > 50) suggestions.push(`📉 ${c.cat} is up ${c.pct.toFixed(0)}% — review recent purchases`);
+    });
+    if (projectedSavings > 0) suggestions.push(`💰 Great pace! You could save ${dm.formatCurrency(projectedSavings)} this month`);
+    suggestions.push('📌 Set up automatic transfers to savings on payday');
+    suggestions.push('🛒 Try a weekly grocery budget to reduce Food & Dining costs');
+
+    return { headline, weekChange, thisWeekSpend, lastWeekSpend, thisMonthSpend, lastMonthSpend, thisMonthIncome, projectedSavings, catAnalysis, suggestions };
+  },
+
   // ===== INSIGHTS =====
   renderInsights(transactions, history) {
     var dm = this.dm;
+    var self = this;
     var el = document.getElementById('insContent');
     if (!el) return;
 
-    var txns = transactions || dm.getTransactions();
-    if (!txns.length) {
+    var allTxns = transactions || dm.getTransactions();
+    if (!allTxns.length) {
       el.innerHTML = '<div class="empty">Not enough data for insights yet</div>';
       return;
     }
+
+    var txns = this.filterByPeriod(allTxns, this.insightsPeriod);
+
+    // AI Insights
+    var ai = this.generateAIInsights(allTxns, dm);
+
+    var aiHtml = `<div class="ai-card">
+      <div class="ai-card-hd" id="aiToggleHd">
+        <div style="font-size:.62rem;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">🤖 AI Insights</div>
+        <div class="ai-headline">${ai.headline}</div>
+        <div class="ai-toggle" id="aiToggleBtn">See more ▾</div>
+      </div>
+      <div class="ai-card-body" id="aiBody">
+        <div class="ai-section"><h5>📅 Week vs Previous Week</h5>
+          <p>This week: <b class="${ai.thisWeekSpend > ai.lastWeekSpend ? 'ai-bad' : 'ai-good'}">${dm.formatCurrency(ai.thisWeekSpend)}</b> vs last week: <b>${dm.formatCurrency(ai.lastWeekSpend)}</b> (${ai.weekChange > 0 ? '+' : ''}${ai.weekChange.toFixed(0)}%)</p>
+        </div>
+        <div class="ai-section"><h5>📊 Month vs Previous Month</h5>
+          <p>This month: <b>${dm.formatCurrency(ai.thisMonthSpend)}</b> vs last month: <b>${dm.formatCurrency(ai.lastMonthSpend)}</b></p>
+          <p>Income this month: <b class="ai-good">${dm.formatCurrency(ai.thisMonthIncome)}</b></p>
+        </div>
+        <div class="ai-section"><h5>🏷️ Category Breakdown</h5>
+          ${ai.catAnalysis.slice(0, 6).map(c => '<div class="ai-item"><b>' + c.cat + '</b>: ' + dm.formatCurrency(c.cur) + (c.prev > 0 ? ' <span class="' + (c.pct > 10 ? 'ai-bad' : c.pct < -10 ? 'ai-good' : '') + '">(' + (c.pct > 0 ? '+' : '') + c.pct.toFixed(0) + '% vs last month)</span>' : '') + '</div>').join('')}
+        </div>
+        <div class="ai-section"><h5>💡 Suggestions</h5>
+          ${ai.suggestions.map(s => '<div class="ai-item">' + s + '</div>').join('')}
+        </div>
+      </div>
+    </div>`;
 
     // Top categories
     var cats = {};
@@ -731,14 +855,6 @@ const FinanceViews = {
     var dayRange = dates.length > 1 ? Math.max(1, (Math.max(...dates) - Math.min(...dates)) / (1000 * 60 * 60 * 24)) : 1;
     var avgDaily = totalExp / dayRange;
 
-    // Biggest transactions
-    var sorted = [...txns].sort((a, b) => Math.abs(b.convertedAmount) - Math.abs(a.convertedAmount));
-    var biggestOut = sorted.filter(t => t.amount < 0).slice(0, 5);
-    var biggestIn = sorted.filter(t => t.amount > 0).slice(0, 5);
-
-    var bigOutHtml = biggestOut.map(t => `<div class="insight-row"><span class="insight-name" style="font-size:.76rem">${t.description}</span><span class="insight-val neg">${dm.formatCurrency(t.convertedAmount)}</span></div>`).join('');
-    var bigInHtml = biggestIn.map(t => `<div class="insight-row"><span class="insight-name" style="font-size:.76rem">${t.description}</span><span class="insight-val pos">+${dm.formatCurrency(t.convertedAmount)}</span></div>`).join('');
-
     // Month-over-month
     var hist = (history || []).filter(h => h['Type'] === 'Actual' || !h['Type']);
     var momHtml = '';
@@ -757,20 +873,46 @@ const FinanceViews = {
     }
 
     el.innerHTML = `
+      ${aiHtml}
+      ${this.buildPeriodToggle('insPeriodToggle', this.insightsPeriod, null)}
+      <div class="fade-in">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 0">
         <div class="insight-card"><div class="insight-big" style="color:var(--red)">${dm.formatCurrency(avgDaily)}</div><div class="insight-label">Avg Daily Spend</div></div>
-        <div class="insight-card"><div class="insight-big" style="color:var(--blue)">${txns.length}</div><div class="insight-label">Total Transactions</div></div>
+        <div class="insight-card"><div class="insight-big" style="color:var(--blue)">${txns.length}</div><div class="insight-label">Transactions (${this.insightsPeriod}D)</div></div>
       </div>
       <div class="pnl"><div class="pnl-hd"><h3>📈 Spending Over Time</h3></div><div class="chart-w"><canvas id="spendOverTimeChart"></canvas></div></div>
       <div class="insight-card"><h4>🏆 Top Spending Categories</h4>${catHtml}</div>
       ${momHtml}
       <div class="pnl"><div class="pnl-hd"><h3>📊 Spending by Day of Week</h3></div><div class="chart-w"><canvas id="dowChart"></canvas></div></div>
-      <div class="insight-card"><h4>💸 Biggest Expenses</h4>${bigOutHtml || '<div class="empty">No expenses</div>'}</div>
-      <div class="insight-card"><h4>💰 Biggest Income</h4>${bigInHtml || '<div class="empty">No income</div>'}</div>
+      <div class="pnl"><div class="pnl-hd"><h3>📊 Spending by Time of Month</h3></div><div class="chart-w"><canvas id="tomChart"></canvas></div></div>
+      </div>
     `;
+
+    // Wire AI toggle
+    var aiHd = document.getElementById('aiToggleHd');
+    if (aiHd) {
+      aiHd.onclick = () => {
+        var body = document.getElementById('aiBody');
+        var btn = document.getElementById('aiToggleBtn');
+        if (body.classList.contains('open')) {
+          body.classList.remove('open');
+          btn.textContent = 'See more ▾';
+        } else {
+          body.classList.add('open');
+          btn.textContent = 'See less ▴';
+        }
+      };
+    }
+
+    // Wire period toggle
+    this.wirePeriodToggle('insPeriodToggle', (days) => {
+      self.insightsPeriod = days;
+      self.renderInsights(allTxns, history);
+    });
 
     FinanceCharts.spendingOverTime('spendOverTimeChart', txns, dm);
     FinanceCharts.dayOfWeekBar('dowChart', txns, dm);
+    FinanceCharts.timeOfMonthBar('tomChart', txns, dm);
   }
 };
 

@@ -92,24 +92,30 @@ const FinanceCharts = {
     });
   },
 
-  // Income vs expenses bar chart
-  incomeExpenseBar(canvasId, history, dm) {
+  // Income vs expenses bar chart — computed from TRANSACTIONS
+  incomeExpenseBar(canvasId, transactions, dm) {
     this.destroy(canvasId);
     var cv = document.getElementById(canvasId);
     if (!cv) return;
-    var months = (history || []).filter(h => h['Type'] === 'Actual' || !h['Type']).slice(-6);
-    if (!months.length) { cv.parentElement.innerHTML = '<div class="empty">No history data</div>'; return; }
-    var labels = months.map(m => {
-      var p = (m['Month'] || '').split('-');
-      return p.length === 2 ? new Date(p[0], p[1] - 1).toLocaleString('en-AU', { month: 'short' }) : m['Month'];
+    // Group by month
+    var monthly = {};
+    (transactions || []).forEach(t => {
+      if (!t.date) return;
+      var key = t.date.getFullYear() + '-' + String(t.date.getMonth() + 1).padStart(2, '0');
+      if (!monthly[key]) monthly[key] = { income: 0, expenses: 0 };
+      if (t.amount > 0) monthly[key].income += Math.abs(t.convertedAmount);
+      else if (t.category !== 'Transfer') monthly[key].expenses += Math.abs(t.convertedAmount);
     });
+    var months = Object.keys(monthly).sort().slice(-6);
+    if (!months.length) { cv.parentElement.innerHTML = '<div class="empty">No data yet</div>'; return; }
+    var labels = months.map(m => { var p = m.split('-'); return new Date(p[0], p[1] - 1).toLocaleString('en-AU', { month: 'short' }); });
     this.instances[canvasId] = new Chart(cv, {
       type: 'bar',
       data: {
         labels,
         datasets: [
-          { label: 'Income', data: months.map(m => parseFloat(m['Total Income']) || 0), backgroundColor: 'rgba(52,211,153,.7)', borderRadius: 4 },
-          { label: 'Expenses', data: months.map(m => (parseFloat(m['Total Bills']) || 0) + (parseFloat(m['Total Spending']) || 0)), backgroundColor: 'rgba(248,113,113,.7)', borderRadius: 4 }
+          { label: 'Income', data: months.map(m => monthly[m].income), backgroundColor: 'rgba(52,211,153,.7)', borderRadius: 4 },
+          { label: 'Expenses', data: months.map(m => monthly[m].expenses), backgroundColor: 'rgba(248,113,113,.7)', borderRadius: 4 }
         ]
       },
       options: {
@@ -127,23 +133,32 @@ const FinanceCharts = {
     });
   },
 
-  // Spending trend line
-  spendingTrend(canvasId, history, dm) {
+  // Spending trend line — computed from TRANSACTIONS (cumulative daily)
+  spendingTrend(canvasId, transactions, dm) {
     this.destroy(canvasId);
     var cv = document.getElementById(canvasId);
     if (!cv) return;
-    var months = (history || []).filter(h => h['Type'] === 'Actual' || !h['Type']).slice(-6);
-    if (!months.length) { cv.parentElement.innerHTML = '<div class="empty">No trend data</div>'; return; }
-    var labels = months.map(m => {
-      var p = (m['Month'] || '').split('-');
-      return p.length === 2 ? new Date(p[0], p[1] - 1).toLocaleString('en-AU', { month: 'short' }) : m['Month'];
+    var expenses = (transactions || []).filter(t => t.amount < 0 && t.date && t.category !== 'Transfer')
+      .sort((a, b) => (a.date || 0) - (b.date || 0));
+    if (!expenses.length) { cv.parentElement.innerHTML = '<div class="empty">No trend data</div>'; return; }
+    // Group by week
+    var weeklyMap = {};
+    expenses.forEach(t => {
+      var d = new Date(t.date);
+      // Week start (Monday)
+      var day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      var ws = new Date(d.getFullYear(), d.getMonth(), diff);
+      var key = ws.toISOString().split('T')[0];
+      weeklyMap[key] = (weeklyMap[key] || 0) + Math.abs(t.convertedAmount);
     });
+    var weeks = Object.keys(weeklyMap).sort().slice(-12);
+    var labels = weeks.map(w => { var d = new Date(w); return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); });
     this.instances[canvasId] = new Chart(cv, {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          data: months.map(m => (parseFloat(m['Total Bills']) || 0) + (parseFloat(m['Total Spending']) || 0)),
+          data: weeks.map(w => weeklyMap[w]),
           borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,.06)', fill: true, tension: .35, pointRadius: 3,
           pointBackgroundColor: '#f87171', borderWidth: 2
         }]
@@ -185,7 +200,6 @@ const FinanceCharts = {
     this.destroy(canvasId);
     var cv = document.getElementById(canvasId);
     if (!cv) return;
-    // Group by month and person
     var monthly = {};
     (wages || []).forEach(w => {
       var d = new Date(w['Date']);
@@ -296,18 +310,21 @@ const FinanceCharts = {
     });
   },
 
-  // Account balance over time (for detail view, uses transaction history)
+  // Account balance over time (for detail view, uses Balance After)
   accountBalanceLine(canvasId, transactions, dm) {
     this.destroy(canvasId);
     var cv = document.getElementById(canvasId);
-    if (!cv || !transactions.length) return;
-    var s = [...transactions].sort((a, b) => (a.date || 0) - (b.date || 0));
+    if (!cv) return;
+    var s = [...transactions].filter(t => t.date && (t.balanceAfter !== 0 || t.convertedBalance !== 0)).sort((a, b) => (a.date || 0) - (b.date || 0));
+    if (!s.length) { cv.parentElement.innerHTML = '<div class="empty">No balance data</div>'; return; }
+    // Use balanceAfter (native) converted, or convertedBalance
+    var balData = s.map(e => e.convertedBalance || dm.convert(e.balanceAfter, e.currency));
     this.instances[canvasId] = new Chart(cv, {
       type: 'line',
       data: {
         labels: s.map(e => e.date ? e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''),
         datasets: [{
-          data: s.map(e => e.convertedBalance),
+          data: balData,
           borderColor: '#4f8cff', backgroundColor: 'rgba(79,140,255,.08)',
           fill: true, tension: .35, pointRadius: 0, borderWidth: 2
         }]
@@ -331,7 +348,6 @@ const FinanceCharts = {
       .sort((a, b) => (a.date || 0) - (b.date || 0));
     if (!expenses.length) { cv.parentElement.innerHTML = '<div class="empty">No spending data</div>'; return; }
 
-    // Group by date
     var dailyMap = {};
     expenses.forEach(t => {
       var key = t.date.toISOString().split('T')[0];
@@ -389,17 +405,49 @@ const FinanceCharts = {
     var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     var totals = new Array(7).fill(0);
     var counts = new Array(7).fill(0);
-    transactions.filter(t => t.amount < 0 && t.date).forEach(t => {
+    transactions.filter(t => t.amount < 0 && t.date && t.category !== 'Transfer').forEach(t => {
       var d = t.date.getDay();
       totals[d] += Math.abs(t.convertedAmount);
       counts[d]++;
     });
     var avgs = totals.map((t, i) => counts[i] > 0 ? t / counts[i] : 0);
+    if (avgs.every(v => v === 0)) { cv.parentElement.innerHTML = '<div class="empty">No spending data</div>'; return; }
     this.instances[canvasId] = new Chart(cv, {
       type: 'bar',
       data: {
         labels: days,
         datasets: [{ data: avgs, backgroundColor: days.map((_, i) => i === 0 || i === 6 ? 'rgba(167,139,250,.6)' : 'rgba(79,140,255,.6)'), borderRadius: 4 }]
+      },
+      options: {
+        ...this.defaults,
+        scales: {
+          ...this.defaults.scales,
+          y: { ...this.defaults.scales.y, ticks: { ...this.defaults.scales.y.ticks, callback: v => dm.formatCurrency(v) } }
+        }
+      }
+    });
+  },
+
+  // Spending by time of month (1st-10th, 11th-20th, 21st-31st)
+  timeOfMonthBar(canvasId, transactions, dm) {
+    this.destroy(canvasId);
+    var cv = document.getElementById(canvasId);
+    if (!cv) return;
+    var periods = ['1st–10th', '11th–20th', '21st–31st'];
+    var totals = [0, 0, 0];
+    var counts = [0, 0, 0];
+    transactions.filter(t => t.amount < 0 && t.date && t.category !== 'Transfer').forEach(t => {
+      var d = t.date.getDate();
+      var idx = d <= 10 ? 0 : d <= 20 ? 1 : 2;
+      totals[idx] += Math.abs(t.convertedAmount);
+      counts[idx]++;
+    });
+    if (totals.every(v => v === 0)) { cv.parentElement.innerHTML = '<div class="empty">No spending data</div>'; return; }
+    this.instances[canvasId] = new Chart(cv, {
+      type: 'bar',
+      data: {
+        labels: periods,
+        datasets: [{ data: totals, backgroundColor: ['rgba(79,140,255,.6)', 'rgba(167,139,250,.6)', 'rgba(244,114,182,.6)'], borderRadius: 4 }]
       },
       options: {
         ...this.defaults,

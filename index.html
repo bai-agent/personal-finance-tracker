@@ -56,11 +56,12 @@
     <div class="pcard wide"><h4>🤝 Joint</h4><div class="pgrid"><div class="prow"><span>Bills</span><span id="jB">$0</span></div><div class="prow"><span>Savings</span><span id="jSv">$0</span></div><div class="prow"><span>Food</span><span id="jF">$0</span></div><div class="prow"><span>Credit</span><span id="jC">$0</span></div></div></div>
 
     <!-- Overview Charts -->
+    <div id="ovPeriodToggle" style="padding:14px 0 0"></div>
     <div class="pnl"><div class="pnl-hd"><h3>🍩 Spending by Category</h3></div><div class="chart-w"><canvas id="ovCatChart"></canvas></div></div>
     <div class="pnl"><div class="pnl-hd"><h3>📊 Income vs Expenses</h3></div><div class="chart-w"><canvas id="ovIncExpChart"></canvas></div></div>
     <div class="pnl"><div class="pnl-hd"><h3>📉 Spending Trend</h3></div><div class="chart-w"><canvas id="ovTrendChart"></canvas></div></div>
-    <div class="pnl"><div class="pnl-hd"><h3>📅 Upcoming Bills</h3></div><div id="ovMiniCal"></div><div class="pnl-bd" id="upcomingBills"><div class="empty">Loading…</div></div></div>
-    <div class="pnl"><div class="pnl-hd"><h3>📊 Trends & Analysis</h3></div><div class="pnl-bd" id="ovTrends"><div class="empty">Loading…</div></div></div>
+    <div class="pnl"><div class="pnl-hd"><h3>📅 Upcoming Bills</h3></div><div id="ovMiniCal"></div><div class="pnl-bd" id="upcomingBills"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
+    <div class="pnl"><div class="pnl-hd"><h3>📊 Trends & Analysis</h3></div><div class="pnl-bd" id="ovTrends"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
   </div>
 
   <!-- ACCOUNTS -->
@@ -87,25 +88,25 @@
         <select class="pmon" id="sMon"><option value="">Month…</option></select>
       </div>
       <div class="ss" id="stmtSum"></div>
-      <div class="pnl-bd" id="stmtList"><div class="empty">Loading…</div></div>
+      <div class="pnl-bd" id="stmtList"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div>
     </div>
     <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w"><canvas id="balChart"></canvas></div></div>
   </div>
 
   <!-- WAGES -->
-  <div id="wages" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💵 Wage History</h3></div><div class="pnl-bd" id="wContent"><div class="empty">Loading…</div></div></div></div>
+  <div id="wages" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💵 Wage History</h3></div><div class="pnl-bd" id="wContent"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div></div>
 
   <!-- BILLS -->
-  <div id="bills" class="pg"><div class="pnl"><div class="pnl-hd"><h3>📋 Bills & Calendar</h3></div><div class="pnl-bd" id="biContent"><div class="empty">Loading…</div></div></div></div>
+  <div id="bills" class="pg"><div class="pnl"><div class="pnl-hd"><h3>📋 Bills & Calendar</h3></div><div class="pnl-bd" id="biContent"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div></div>
 
   <!-- SAVINGS -->
-  <div id="savings" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💎 Savings Goals</h3></div><div class="pnl-bd" id="svContent"><div class="empty">Loading…</div></div></div></div>
+  <div id="savings" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💎 Savings Goals</h3></div><div class="pnl-bd" id="svContent"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div></div>
 
   <!-- PROJECTIONS -->
-  <div id="projections" class="pg"><div id="projContent"><div class="empty">Loading…</div></div></div>
+  <div id="projections" class="pg"><div id="projContent"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
 
   <!-- INSIGHTS -->
-  <div id="insights" class="pg"><div id="insContent"><div class="empty">Loading…</div></div></div>
+  <div id="insights" class="pg"><div id="insContent"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
 
 </div>
 
