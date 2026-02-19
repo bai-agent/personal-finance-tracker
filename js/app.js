@@ -7,6 +7,29 @@
   var globalPeriod = 7; // universal period for whole app
   window.getGlobalPeriod = function(){ return globalPeriod; };
 
+  // Account inclusion for balance calc — credit card excluded by default
+  var acctIncluded = {};
+  CONFIG.ACCOUNTS.forEach(a => { acctIncluded[a.name] = a.type !== 'credit'; });
+
+  // Self-transfer detection — also exposed globally for views/insights
+  window.isSelfTransfer = isSelfTransfer;
+  window.excludeSelfTransfers = excludeSelfTransfers;
+  function isSelfTransfer(t) {
+    var d = (t.description || '').toLowerCase();
+    // Wise transfers are always self-transfers
+    if (d.includes('wise')) return true;
+    // CommBank app transfers between own accounts (no named recipient)
+    if (d.match(/transfer (to|from) xx\d+ commbank app/i)) return true;
+    // Fast transfers between own accounts
+    if (d.match(/^(transfer|fast transfer) (to|from) xx\d/i)) return true;
+    return false;
+  }
+
+  // Filter out self-transfers from a transaction array
+  function excludeSelfTransfers(txns) {
+    return txns.filter(t => !isSelfTransfer(t));
+  }
+
   document.addEventListener('DOMContentLoaded', async()=>{
     try {
     console.log('🚀 App init');
@@ -155,10 +178,12 @@
   // OVERVIEW
   function renderOverview(){
     var a=dm.getAccounts(),l=allTxns.length ? allTxns : dm.getTransactions();
-    var filtered = FinanceViews.filterByPeriod(l, globalPeriod);
-    var tot=a.reduce((s,x)=>s+x.balance,0);
+    var real = excludeSelfTransfers(l);
+    var filtered = FinanceViews.filterByPeriod(real, globalPeriod);
+    // Exclude credit card from total balance
+    var tot=a.filter(x => acctIncluded[x.name] !== false).reduce((s,x)=>s+x.balance,0);
     var h=document.getElementById('totalBal');h.textContent=dm.formatCurrency(tot);h.className='hero-amt '+(tot>=0?'pos':'neg');
-    // All stats use global period
+    // All stats use global period, excluding self-transfers
     var inc = filtered.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
     var exp = Math.abs(filtered.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
     var savRate = inc>0?((inc-exp)/inc*100).toFixed(0):'--';
@@ -179,9 +204,9 @@
     document.getElementById('jF').textContent=b('Joint (Starling)');
     document.getElementById('jC').textContent=b('Credit Card (Capital One)');
 
-    // Overview charts — use ALL transactions, filter by global period
+    // Overview charts — exclude self-transfers
     try{FinanceCharts.categoryDonut('ovCatChart', filtered, dm)}catch(e){console.error('catDonut:',e)}
-    try{FinanceCharts.incomeExpenseBar('ovIncExpChart', l, dm)}catch(e){console.error('incExp:',e)}
+    try{FinanceCharts.incomeExpenseBar('ovIncExpChart', real, dm)}catch(e){console.error('incExp:',e)}
     try{FinanceCharts.spendingTrend('ovTrendChart', filtered, dm)}catch(e){console.error('trend:',e)}
     // Show canvases, hide spinners
     ['ovCatWrap','ovIncExpWrap','ovTrendWrap'].forEach(function(id){
@@ -196,7 +221,7 @@
     // Upcoming bills now integrated into mini calendar
 
     // Trends & Analysis
-    try{FinanceViews.renderTrendsAnalysis(l, dm.cache.history || [])}catch(e){console.error('trends:',e)}
+    try{FinanceViews.renderTrendsAnalysis(real, dm.cache.history || [])}catch(e){console.error('trends:',e)}
   }
 
   // ACCOUNTS
@@ -206,18 +231,53 @@
     if (detail) { detail.classList.remove('on'); detail.innerHTML = ''; }
     g.classList.remove('hide');
 
+    // Balance hero
+    var balEl = document.getElementById('acctBalHero');
+    if (!balEl) {
+      balEl = document.createElement('div');
+      balEl.id = 'acctBalHero';
+      balEl.className = 'hero';
+      g.parentElement.insertBefore(balEl, g);
+    }
+    var incTotal = a.filter(x => acctIncluded[x.name] !== false).reduce((s, x) => s + x.balance, 0);
+    var incCount = a.filter(x => acctIncluded[x.name] !== false).length;
+    balEl.innerHTML = '<div class="hero-lbl">Combined Balance</div><div class="hero-amt ' + (incTotal >= 0 ? 'pos' : 'neg') + '">' + dm.formatCurrency(incTotal) + '</div><div class="hero-sub">' + incCount + ' of ' + a.length + ' accounts included</div>';
+
     g.innerHTML=a.map(x=>{
       var c=CONFIG.ACCOUNTS.find(c=>c.name===x.name)||{};
       var color = FinanceCharts.getAccountColor(x.name);
+      var checked = acctIncluded[x.name] !== false;
       var nv=x.nativeCurrency!==dm.displayCurrency?'<div class="native">'+dm.formatCurrency(x.nativeBalance,x.nativeCurrency)+' '+x.nativeCurrency+'</div>':'';
-      return '<div class="acard" data-acct="'+x.name+'" style="border-left:3px solid '+color+'"><div class="icon">'+(c.icon||'💰')+'</div><div class="name">'+(c.shortName||x.name.replace(/ \(.*\)/,''))+'</div>'+
+      return '<div class="acard' + (checked ? '' : ' excluded') + '" data-acct="'+x.name+'" style="border-left:3px solid '+color+'">' +
+        '<label class="acct-check" onclick="event.stopPropagation()"><input type="checkbox" data-acct-chk="'+x.name+'" '+(checked?'checked':'')+'/><span class="acct-chk-mark"></span></label>' +
+        '<div class="icon">'+(c.icon||'💰')+'</div><div class="name">'+(c.shortName||x.name.replace(/ \(.*\)/,''))+'</div>'+
         '<div class="purpose">'+x.purpose+' · '+x.nativeCurrency+'</div>'+
         '<div class="bal '+(x.balance>=0?'pos':'neg')+'">'+dm.formatCurrency(x.balance)+'</div>'+nv+
         '<div class="chg '+(x.change>=0?'pos':'neg')+'">'+(x.change>=0?'↗':'↘')+' '+dm.formatCurrency(Math.abs(x.change))+'</div></div>';
     }).join('');
 
+    // Wire checkboxes
+    g.querySelectorAll('input[data-acct-chk]').forEach(chk => {
+      chk.onchange = () => {
+        acctIncluded[chk.dataset.acctChk] = chk.checked;
+        chk.closest('.acard').classList.toggle('excluded', !chk.checked);
+        // Recalc balance hero
+        var inc2 = a.filter(x => acctIncluded[x.name] !== false).reduce((s, x) => s + x.balance, 0);
+        var cnt2 = a.filter(x => acctIncluded[x.name] !== false).length;
+        balEl.querySelector('.hero-amt').textContent = dm.formatCurrency(inc2);
+        balEl.querySelector('.hero-amt').className = 'hero-amt ' + (inc2 >= 0 ? 'pos' : 'neg');
+        balEl.querySelector('.hero-sub').textContent = cnt2 + ' of ' + a.length + ' accounts included';
+        // Also update overview total
+        var ovH = document.getElementById('totalBal');
+        if (ovH) { ovH.textContent = dm.formatCurrency(inc2); ovH.className = 'hero-amt ' + (inc2 >= 0 ? 'pos' : 'neg'); }
+      };
+    });
+
     g.querySelectorAll('.acard').forEach(card => {
-      card.onclick = () => FinanceViews.openAccountDetail(card.dataset.acct, go);
+      card.onclick = (e) => {
+        if (e.target.closest('.acct-check')) return;
+        FinanceViews.openAccountDetail(card.dataset.acct, go);
+      };
     });
   }
 
