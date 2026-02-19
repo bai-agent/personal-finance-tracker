@@ -8,15 +8,21 @@
   window.getGlobalPeriod = function(){ return globalPeriod; };
 
   document.addEventListener('DOMContentLoaded', async()=>{
+    try {
+    console.log('🚀 App init');
     FinanceViews.init(dm);
     wireNav(); wireCur(); wireGlobalPeriod();
     buildFilter(); wirePeriods(); wireMonth();
     showGlobalSpinner();
+    console.log('📡 Fetching data...');
     try { await dm.fetchAll(); } catch(e) { console.error('fetchAll failed:', e); }
+    console.log('✅ Data loaded, transactions:', (dm.cache.transactions||[]).length);
     // Use whatever we got from fetchAll first
     allTxns = dm.getTransactions();
+    console.log('📊 Rendering...');
     hideGlobalSpinner();
     renderAll();
+    console.log('✅ Render complete');
     // Then load full transaction history in background
     dm.fetchTransactions(null, null).then(function(raw){
       if(raw && raw.length) {
@@ -25,6 +31,7 @@
         if(tab==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
       }
     }).catch(function(e){ console.error('fetchTransactions bg failed:', e); });
+    } catch(fatal) { console.error('💥 FATAL:', fatal); }
   });
 
   function showGlobalSpinner() {
@@ -36,7 +43,11 @@
     // Content will be replaced by render functions
   }
 
-  function renderAll(){renderOverview();renderAccts();popMonths()}
+  function renderAll(){
+    try{renderOverview()}catch(e){console.error('renderOverview:',e)}
+    try{renderAccts()}catch(e){console.error('renderAccts:',e)}
+    try{popMonths()}catch(e){console.error('popMonths:',e)}
+  }
 
   // NAV
   function wireNav(){
@@ -187,9 +198,9 @@
     document.getElementById('jC').textContent=b('Credit Card (Capital One)');
 
     // Overview charts — use ALL transactions, filter by global period
-    FinanceCharts.categoryDonut('ovCatChart', filtered, dm);
-    FinanceCharts.incomeExpenseBar('ovIncExpChart', l, dm);
-    FinanceCharts.spendingTrend('ovTrendChart', filtered, dm);
+    try{FinanceCharts.categoryDonut('ovCatChart', filtered, dm)}catch(e){console.error('catDonut:',e)}
+    try{FinanceCharts.incomeExpenseBar('ovIncExpChart', l, dm)}catch(e){console.error('incExp:',e)}
+    try{FinanceCharts.spendingTrend('ovTrendChart', filtered, dm)}catch(e){console.error('trend:',e)}
     // Show canvases, hide spinners
     ['ovCatWrap','ovIncExpWrap','ovTrendWrap'].forEach(function(id){
       var w=document.getElementById(id);if(!w)return;
@@ -198,13 +209,13 @@
     });
 
     // Mini calendar
-    FinanceViews.renderMiniCalendar(dm.cache.bills || []);
+    try{FinanceViews.renderMiniCalendar(dm.cache.bills || [])}catch(e){console.error('miniCal:',e)}
 
     // Upcoming bills list
-    renderUpcomingBills();
+    try{renderUpcomingBills()}catch(e){console.error('upcomingBills:',e)}
 
     // Trends & Analysis
-    FinanceViews.renderTrendsAnalysis(l, dm.cache.history || []);
+    try{FinanceViews.renderTrendsAnalysis(l, dm.cache.history || [])}catch(e){console.error('trends:',e)}
   }
 
   function renderUpcomingBills() {
