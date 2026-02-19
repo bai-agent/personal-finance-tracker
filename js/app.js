@@ -12,14 +12,19 @@
     wireNav(); wireCur(); wireGlobalPeriod();
     buildFilter(); wirePeriods(); wireMonth();
     showGlobalSpinner();
-    await dm.fetchAll();
-    // Load all transactions for insights/charts
-    try {
-      var raw = await dm.fetchTransactions(null, null);
-      allTxns = raw.map(e => trRow(e)).sort((a,b)=>(b.date||0)-(a.date||0));
-    } catch(e) { allTxns = dm.getTransactions(); }
+    try { await dm.fetchAll(); } catch(e) { console.error('fetchAll failed:', e); }
+    // Use whatever we got from fetchAll first
+    allTxns = dm.getTransactions();
     hideGlobalSpinner();
     renderAll();
+    // Then load full transaction history in background
+    dm.fetchTransactions(null, null).then(function(raw){
+      if(raw && raw.length) {
+        allTxns = raw.map(function(e){return trRow(e)}).sort(function(a,b){return(b.date||0)-(a.date||0)});
+        renderAll();
+        if(tab==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
+      }
+    }).catch(function(e){ console.error('fetchTransactions bg failed:', e); });
   });
 
   function showGlobalSpinner() {

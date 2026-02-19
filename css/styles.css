@@ -36,10 +36,10 @@ body{
 }
 .btn-cur.gbp{background:var(--purple)}
 .btn-cur:active{transform:scale(.93)}
-.period-global{display:flex;gap:3px}
-.pbtn-g{padding:4px 10px;border-radius:6px;background:var(--card2);color:var(--sub);border:1px solid var(--border);font-size:.65rem;font-weight:600;cursor:pointer}
-.pbtn-g.on{background:var(--blue);color:#fff;border-color:var(--blue)}
-.pbtn-g:active{transform:scale(.93)}
+.period-global{display:flex;background:var(--card2);border-radius:8px;padding:2px;gap:1px}
+.pbtn-g{padding:5px 12px;border-radius:6px;background:transparent;color:var(--dim);border:none;font-size:.68rem;font-weight:600;cursor:pointer;transition:all .15s}
+.pbtn-g.on{background:var(--blue);color:#fff}
+.pbtn-g:active{opacity:.8}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ===== NAV ===== */
