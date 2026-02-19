@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>B&K Finance Tracker</title>
+<title>Finances</title>
 <meta name="theme-color" content="#0c1222">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,10 +15,14 @@
 
 <!-- HEADER -->
 <header class="hdr"><div class="hdr-inner">
-  <div class="hdr-title">💰 B&K Finances</div>
+  <div class="hdr-title">Finances</div>
   <div class="hdr-right">
     <button class="btn-cur" id="curBtn">$ AUD</button>
-    <button class="btn-ref" id="refBtn">🔄</button>
+    <div class="period-global">
+      <button class="pbtn-g on" data-gd="7">7D</button>
+      <button class="pbtn-g" data-gd="30">30D</button>
+      <button class="pbtn-g" data-gd="90">90D</button>
+    </div>
   </div>
 </div></header>
 
@@ -45,8 +49,8 @@
       <div class="hero-sub">across all accounts</div>
     </div>
     <div class="stats" id="statsSection">
-      <div class="stat g"><div class="stat-lbl">Income</div><div class="stat-val" id="sInc"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
-      <div class="stat r"><div class="stat-lbl">Expenses</div><div class="stat-val" id="sExp"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
+      <div class="stat g"><div class="stat-lbl" id="sIncLbl">This Week</div><div class="stat-val" id="sInc"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
+      <div class="stat r"><div class="stat-lbl" id="sExpLbl">This Month</div><div class="stat-val" id="sExp"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
       <div class="stat b"><div class="stat-lbl">Saved</div><div class="stat-val" id="sSav"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></div></div>
     </div>
     <div class="ppl" id="pplSection">
@@ -56,7 +60,6 @@
     <div class="pcard wide"><h4>🤝 Joint</h4><div class="pgrid"><div class="prow"><span>Commonwealth</span><span id="jB"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Savings</span><span id="jSv"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Starling</span><span id="jF"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div><div class="prow"><span>Credit</span><span id="jC"><div class="spinner-inline sm"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div></span></div></div></div>
 
     <!-- Overview Charts -->
-    <div id="ovPeriodToggle" style="padding:14px 0 0"></div>
     <div class="pnl"><div class="pnl-hd"><h3>🍩 Spending by Category</h3></div><div class="chart-w" id="ovCatWrap"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div><canvas id="ovCatChart" style="display:none"></canvas></div></div>
     <div class="pnl"><div class="pnl-hd"><h3>📊 Income vs Expenses</h3></div><div class="chart-w" id="ovIncExpWrap"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div><canvas id="ovIncExpChart" style="display:none"></canvas></div></div>
     <div class="pnl"><div class="pnl-hd"><h3>📉 Spending Trend</h3></div><div class="chart-w" id="ovTrendWrap"><div class="spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div></div><canvas id="ovTrendChart" style="display:none"></canvas></div></div>
@@ -110,8 +113,7 @@
 
 </div>
 
-<!-- FOOTER -->
-<footer class="ftr"><span id="fSrc">—</span> · <span id="fRate">£1 = $—</span> · BAI 🤖</footer>
+<!-- FOOTER removed -->
 
 <!-- BACKDROP -->
 <div class="bkdp" id="bkdp"></div>

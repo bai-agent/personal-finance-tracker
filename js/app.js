@@ -4,11 +4,12 @@
   var sa = CONFIG.ACCOUNTS.map(a=>a.name), sDays=7, sMonth='', sfOpen=false, tab='overview';
   var dm = dataManager;
   var allTxns = []; // cached full transaction set
-  var overviewPeriod = 30;
+  var globalPeriod = 7; // universal period for whole app
+  window.getGlobalPeriod = function(){ return globalPeriod; };
 
   document.addEventListener('DOMContentLoaded', async()=>{
     FinanceViews.init(dm);
-    wireNav(); wireCur(); wireRef();
+    wireNav(); wireCur(); wireGlobalPeriod();
     buildFilter(); wirePeriods(); wireMonth();
     showGlobalSpinner();
     await dm.fetchAll();
@@ -30,7 +31,7 @@
     // Content will be replaced by render functions
   }
 
-  function renderAll(){renderOverview();renderAccts();popMonths();renderFtr()}
+  function renderAll(){renderOverview();renderAccts();popMonths()}
 
   // NAV
   function wireNav(){
@@ -70,21 +71,22 @@
     };
   }
 
-  // REFRESH
-  function wireRef(){
-    var b=document.getElementById('refBtn');
-    b.onclick=async()=>{
-      b.innerHTML='<div class="spinner-ring" style="width:18px;height:18px;border-width:2px;margin:0"></div>';
-      await dm.fetchAll();
-      try {
-        var raw = await dm.fetchTransactions(null, null);
-        allTxns = raw.map(e => trRow(e)).sort((a,b)=>(b.date||0)-(a.date||0));
-      } catch(e) {}
-      b.textContent='🔄';
-      renderAll();
-      if(tab==='statements')renderStmt();
-      if(tab==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
-    };
+  // GLOBAL PERIOD TOGGLE
+  function wireGlobalPeriod(){
+    document.querySelectorAll('.pbtn-g').forEach(function(b){
+      b.addEventListener('click', function(){
+        document.querySelectorAll('.pbtn-g').forEach(function(x){x.classList.remove('on')});
+        b.classList.add('on');
+        globalPeriod = parseInt(b.dataset.gd);
+        renderAll();
+        if(tab==='statements')renderStmt();
+        if(tab==='wages')FinanceViews.renderWages(dm.cache.wages||[]);
+        if(tab==='bills')FinanceViews.renderBillsCalendar(dm.cache.bills||[]);
+        if(tab==='savings')FinanceViews.renderSavings(dm.cache.savings||[], dm.cache.history||[]);
+        if(tab==='projections')FinanceViews.renderProjections(dm.cache.projections||[], dm.cache.bills||[], dm.getAccounts());
+        if(tab==='insights')FinanceViews.renderInsights(allTxns, dm.cache.history||[]);
+      });
+    });
   }
 
   // FILTER
@@ -151,14 +153,23 @@
   // OVERVIEW
   function renderOverview(){
     var a=dm.getAccounts(),l=allTxns.length ? allTxns : dm.getTransactions();
-    var filtered = FinanceViews.filterByPeriod(l, overviewPeriod);
+    var filtered = FinanceViews.filterByPeriod(l, globalPeriod);
     var tot=a.reduce((s,x)=>s+x.balance,0);
     var h=document.getElementById('totalBal');h.textContent=dm.formatCurrency(tot);h.className='hero-amt '+(tot>=0?'pos':'neg');
-    var inc,exp,savRate;
-    if(filtered.length>0){inc=filtered.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);exp=Math.abs(filtered.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));savRate=inc>0?((inc-exp)/inc*100).toFixed(0):'--';}
-    else{inc=dm.getDashboardMetric('Monthly Income');exp=dm.getDashboardMetric('Monthly Expenses');var sr=dm.getDashboardMetric('Savings Rate');savRate=sr>0&&sr<1?(sr*100).toFixed(0):inc>0?((inc-exp)/inc*100).toFixed(0):'--';}
-    document.getElementById('sInc').textContent=dm.formatCurrency(inc);
-    document.getElementById('sExp').textContent=dm.formatCurrency(exp);
+    // This Week income
+    var weekTxns = FinanceViews.filterByPeriod(l, 7);
+    var weekInc = weekTxns.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
+    // This Month expenses
+    var monthTxns = FinanceViews.filterByPeriod(l, 30);
+    var monthExp = Math.abs(monthTxns.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
+    // Savings rate from period
+    var inc = filtered.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
+    var exp = Math.abs(filtered.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
+    var savRate = inc>0?((inc-exp)/inc*100).toFixed(0):'--';
+    if(weekInc===0 && l.length===0){weekInc=dm.getDashboardMetric('Monthly Income');}
+    if(monthExp===0 && l.length===0){monthExp=dm.getDashboardMetric('Monthly Expenses');}
+    document.getElementById('sInc').textContent=dm.formatCurrency(weekInc);
+    document.getElementById('sExp').textContent=dm.formatCurrency(monthExp);
     document.getElementById('sSav').textContent=savRate+'%';
     var b=n=>{var x=a.find(x=>x.name===n);return dm.formatCurrency(x?x.balance:0)};
     document.getElementById('bW').textContent=b('BW Personal (Commonwealth)');
@@ -170,17 +181,7 @@
     document.getElementById('jF').textContent=b('Joint (Starling)');
     document.getElementById('jC').textContent=b('Credit Card (Capital One)');
 
-    // Overview period toggle
-    var toggleEl = document.getElementById('ovPeriodToggle');
-    if (toggleEl) {
-      toggleEl.innerHTML = FinanceViews.buildPeriodToggle('ovPeriodInner', overviewPeriod, null);
-      FinanceViews.wirePeriodToggle('ovPeriodInner', (days) => {
-        overviewPeriod = days;
-        renderOverview();
-      });
-    }
-
-    // Overview charts — use ALL transactions, filter by period
+    // Overview charts — use ALL transactions, filter by global period
     FinanceCharts.categoryDonut('ovCatChart', filtered, dm);
     FinanceCharts.incomeExpenseBar('ovIncExpChart', l, dm);
     FinanceCharts.spendingTrend('ovTrendChart', filtered, dm);
@@ -283,8 +284,5 @@
       convertedAmount:dm.convert(parseFloat(e['Amount'])||0,c),convertedBalance:dm.convert(parseFloat(e['Balance After'])||0,c)};
   }
 
-  function renderFtr(){
-    document.getElementById('fSrc').textContent=dm.dataSource==='live'?'🟢 Live':'🟡 Demo';
-    document.getElementById('fRate').textContent='£1 = $'+(dm.exchangeRate.gbpToAud||1.95).toFixed(2);
-  }
+  // Footer removed
 })();

@@ -171,7 +171,7 @@ const FinanceViews = {
         ${nv}
         <div class="hero-sub">${cfg.purpose || ''} · ${acct.nativeCurrency}</div>
       </div>
-      ${this.buildPeriodToggle('adPeriodToggle', this.acctDetailPeriod, null)}
+      ${this.buildPeriodToggle('adPeriodToggle', (window.getGlobalPeriod ? window.getGlobalPeriod() : 30), null)}
       <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w"><canvas id="adBalChart"></canvas></div></div>
       <div class="pnl"><div class="pnl-hd"><h3>Spending by Category</h3></div><div class="chart-w"><canvas id="adCatChart"></canvas></div></div>
       ${billsHtml}
@@ -184,7 +184,7 @@ const FinanceViews = {
     };
 
     this.wirePeriodToggle('adPeriodToggle', (days) => {
-      self.acctDetailPeriod = days;
+      (window.getGlobalPeriod ? window.getGlobalPeriod() : 30) = days;
       self.loadAccountTransactions(accountName);
     });
 
@@ -211,7 +211,7 @@ const FinanceViews = {
         };
       }).sort((a, b) => (b.date || 0) - (a.date || 0));
 
-      var filtered = this.filterByPeriod(txns, this.acctDetailPeriod);
+      var filtered = this.filterByPeriod(txns, (window.getGlobalPeriod ? window.getGlobalPeriod() : 30));
       FinanceCharts.accountBalanceLine('adBalChart', filtered, dm);
       FinanceCharts.categoryDonut('adCatChart', filtered, dm);
       this.renderTransactionList('adTxns', filtered, dm);
@@ -804,7 +804,7 @@ const FinanceViews = {
       return;
     }
 
-    var txns = this.filterByPeriod(allTxns, this.insightsPeriod);
+    var txns = this.filterByPeriod(allTxns, (window.getGlobalPeriod ? window.getGlobalPeriod() : 30));
 
     // AI Insights
     var ai = this.generateAIInsights(allTxns, dm);
@@ -874,11 +874,11 @@ const FinanceViews = {
 
     el.innerHTML = `
       ${aiHtml}
-      ${this.buildPeriodToggle('insPeriodToggle', this.insightsPeriod, null)}
+      ${this.buildPeriodToggle('insPeriodToggle', (window.getGlobalPeriod ? window.getGlobalPeriod() : 30), null)}
       <div class="fade-in">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 0">
         <div class="insight-card"><div class="insight-big" style="color:var(--red)">${dm.formatCurrency(avgDaily)}</div><div class="insight-label">Avg Daily Spend</div></div>
-        <div class="insight-card"><div class="insight-big" style="color:var(--blue)">${txns.length}</div><div class="insight-label">Transactions (${this.insightsPeriod}D)</div></div>
+        <div class="insight-card"><div class="insight-big" style="color:var(--blue)">${txns.length}</div><div class="insight-label">Transactions (${(window.getGlobalPeriod ? window.getGlobalPeriod() : 30)}D)</div></div>
       </div>
       <div class="pnl"><div class="pnl-hd"><h3>📈 Spending Over Time</h3></div><div class="chart-w"><canvas id="spendOverTimeChart"></canvas></div></div>
       <div class="insight-card"><h4>🏆 Top Spending Categories</h4>${catHtml}</div>
@@ -906,7 +906,7 @@ const FinanceViews = {
 
     // Wire period toggle
     this.wirePeriodToggle('insPeriodToggle', (days) => {
-      self.insightsPeriod = days;
+      (window.getGlobalPeriod ? window.getGlobalPeriod() : 30) = days;
       self.renderInsights(allTxns, history);
     });
 

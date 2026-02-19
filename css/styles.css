@@ -36,10 +36,10 @@ body{
 }
 .btn-cur.gbp{background:var(--purple)}
 .btn-cur:active{transform:scale(.93)}
-.btn-ref{background:var(--card2);border:1px solid var(--border);color:var(--sub);
-  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;font-size:1.1rem;border:none}
-.btn-ref:active{opacity:.7}
+.period-global{display:flex;gap:3px}
+.pbtn-g{padding:4px 10px;border-radius:6px;background:var(--card2);color:var(--sub);border:1px solid var(--border);font-size:.65rem;font-weight:600;cursor:pointer}
+.pbtn-g.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pbtn-g:active{transform:scale(.93)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ===== NAV ===== */
@@ -53,7 +53,7 @@ body{
 }
 
 /* ===== MAIN ===== */
-.main{max-width:540px;margin:0 auto;padding:0 20px 90px}
+.main{max-width:540px;margin:0 auto;padding:0 20px 20px}
 .pg{display:none}
 .pg.on{display:block}
 
@@ -220,9 +220,7 @@ body{
 .bkdp.open{display:block}
 
 /* ===== FOOTER ===== */
-.ftr{position:fixed;bottom:0;left:0;right:0;z-index:100;
-  background:var(--card);border-top:1px solid var(--border);
-  text-align:center;padding:10px 20px;font-size:.66rem;color:var(--dim)}
+/* footer removed */
 
 /* ===== MINI CALENDAR ===== */
 .mini-cal{padding:14px 18px}
