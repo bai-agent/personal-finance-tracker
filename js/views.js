@@ -184,7 +184,7 @@ const FinanceViews = {
     };
 
     this.wirePeriodToggle('adPeriodToggle', (days) => {
-      (window.getGlobalPeriod ? window.getGlobalPeriod() : 30) = days;
+      self.acctDetailPeriod = days;
       self.loadAccountTransactions(accountName);
     });
 
@@ -906,7 +906,7 @@ const FinanceViews = {
 
     // Wire period toggle
     this.wirePeriodToggle('insPeriodToggle', (days) => {
-      (window.getGlobalPeriod ? window.getGlobalPeriod() : 30) = days;
+      self.insightsPeriod = days;
       self.renderInsights(allTxns, history);
     });
 
