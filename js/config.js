@@ -3,7 +3,7 @@ const CONFIG = {
   SPREADSHEET_ID: '1jIDRs9Vbm97RYbSf40jsTth6J8-WKcBgccX5EvpMTZ4',
 
   GAS_WEBAPP: {
-    URL: 'https://script.google.com/macros/s/AKfycbzlyfC-_U15SWXpqD2OGgORNJq4JHVTwn2Pll4MXUI3ajUFEB8OP5mi2J9KI89yBqg8wQ/exec'
+    URL: 'https://script.google.com/macros/s/AKfycbyNhnB9By57QvqkRpcSelScDOH1gYeMRVWwgXIA6eLFTUvuWWUaZvg9mSMAuHf1sAPh1Q/exec'
   },
 
   ACCOUNTS: [
