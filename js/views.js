@@ -171,7 +171,6 @@ const FinanceViews = {
         ${nv}
         <div class="hero-sub">${cfg.purpose || ''} · ${acct.nativeCurrency}</div>
       </div>
-      ${this.buildPeriodToggle('adPeriodToggle', (window.getGlobalPeriod ? window.getGlobalPeriod() : 30), null)}
       <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w"><canvas id="adBalChart"></canvas></div></div>
       <div class="pnl"><div class="pnl-hd"><h3>Spending by Category</h3></div><div class="chart-w"><canvas id="adCatChart"></canvas></div></div>
       ${billsHtml}
@@ -182,11 +181,6 @@ const FinanceViews = {
       detail.classList.remove('on');
       grid.classList.remove('hide');
     };
-
-    this.wirePeriodToggle('adPeriodToggle', (days) => {
-      self.acctDetailPeriod = days;
-      self.loadAccountTransactions(accountName);
-    });
 
     this.loadAccountTransactions(accountName);
   },
@@ -211,7 +205,7 @@ const FinanceViews = {
         };
       }).sort((a, b) => (b.date || 0) - (a.date || 0));
 
-      var filtered = this.filterByPeriod(txns, (window.getGlobalPeriod ? window.getGlobalPeriod() : 30));
+      var filtered = this.filterByPeriod(txns, window.getGlobalPeriod ? window.getGlobalPeriod() : 30);
       FinanceCharts.accountBalanceLine('adBalChart', filtered, dm);
       FinanceCharts.categoryDonut('adCatChart', filtered, dm);
       this.renderTransactionList('adTxns', filtered, dm);
@@ -400,28 +394,55 @@ const FinanceViews = {
       return;
     }
 
-    var cal = this._buildCalendarHtml(bills, this.calendarMonth, false);
+    // Sort: Joint Commonwealth first, then by next due date
+    var sorted = [...bills].sort((a, b) => {
+      var aJoint = (a['Account'] || '').indexOf('Joint') >= 0 && (a['Account'] || '').indexOf('Commonwealth') >= 0 ? 0 : 1;
+      var bJoint = (b['Account'] || '').indexOf('Joint') >= 0 && (b['Account'] || '').indexOf('Commonwealth') >= 0 ? 0 : 1;
+      if (aJoint !== bJoint) return aJoint - bJoint;
+      return new Date(a['Next Due Date']) - new Date(b['Next Due Date']);
+    });
 
-    var now = new Date();
-    var billList = bills.map(b => {
+    // Recurring payments full-width tile
+    var totalMonthly = 0;
+    var recurringHtml = sorted.map(b => {
       var c = b['Currency'] || 'AUD';
       var a = Math.abs(parseFloat(b['Amount'])) || 0;
-      var st = b['Status'] || 'Active';
-      var stCls = st === 'Overdue' ? 'overdue' : st === 'Due Soon' ? 'due-soon' : st === 'Upcoming' ? 'upcoming' : 'paid';
+      var converted = dm.convert(a, c);
+      var freq = b['Frequency'] || b['Category'] || 'Monthly';
+      // Estimate monthly cost
+      if (freq.toLowerCase().includes('week')) totalMonthly += converted * 4.33;
+      else if (freq.toLowerCase().includes('fortnight')) totalMonthly += converted * 2.17;
+      else totalMonthly += converted;
       var acctColor = FinanceCharts.getAccountColor(b['Account'] || '');
-      return `<div class="bill-list-item">
-        <div class="bill-left">
-          <div class="bill-name">${b['Bill Name'] || ''}</div>
-          <div class="bill-meta">${b['Frequency'] || 'Monthly'} · Next: ${formatDate(b['Next Due Date'])} · <span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span></div>
+      var st = b['Status'] || 'Active';
+      var stCls = st === 'Cancelled' ? 'cancelled' : st === 'Overdue' ? 'overdue' : 'active';
+      var nextDate = formatDate(b['Next Due Date']);
+      return `<div class="recur-row">
+        <div class="recur-left">
+          <div class="recur-name">${b['Bill Name'] || ''}</div>
+          <div class="recur-meta">
+            <span class="acct-tag" style="background:${acctColor}">${FinanceCharts.getShortName(b['Account'] || '')}</span>
+            <span class="recur-freq">${freq}</span>
+            <span class="recur-status ${stCls}">${st}</span>
+          </div>
         </div>
-        <div class="bill-right">
-          <div class="bill-amt">${dm.formatCurrency(dm.convert(a, c))}</div>
-          <div class="bill-status ${stCls}">${st}</div>
+        <div class="recur-right">
+          <div class="recur-amt">${dm.formatCurrency(converted)}</div>
+          <div class="recur-next">Next: ${nextDate}</div>
         </div>
       </div>`;
     }).join('');
 
+    var cal = this._buildCalendarHtml(bills, this.calendarMonth, false);
+
     el.innerHTML = `
+      <div class="recur-tile">
+        <div class="recur-header">
+          <h3>🔄 Recurring Payments</h3>
+          <div class="recur-total">~${dm.formatCurrency(totalMonthly)}<span>/mo</span></div>
+        </div>
+        <div class="recur-list">${recurringHtml}</div>
+      </div>
       <div style="padding:14px 18px" id="billsCalWrap">
         <div class="cal-month">
           <button class="cal-nav" id="bcPrev">‹</button>
@@ -430,7 +451,6 @@ const FinanceViews = {
         </div>
         <div class="cal-grid">${cal.calCells}</div>
       </div>
-      <div style="padding:0 18px 14px">${billList}</div>
     `;
 
     document.getElementById('bcPrev').onclick = () => {
@@ -874,11 +894,10 @@ const FinanceViews = {
 
     el.innerHTML = `
       ${aiHtml}
-      ${this.buildPeriodToggle('insPeriodToggle', (window.getGlobalPeriod ? window.getGlobalPeriod() : 30), null)}
       <div class="fade-in">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 0">
         <div class="insight-card"><div class="insight-big" style="color:var(--red)">${dm.formatCurrency(avgDaily)}</div><div class="insight-label">Avg Daily Spend</div></div>
-        <div class="insight-card"><div class="insight-big" style="color:var(--blue)">${txns.length}</div><div class="insight-label">Transactions (${(window.getGlobalPeriod ? window.getGlobalPeriod() : 30)}D)</div></div>
+        <div class="insight-card"><div class="insight-big" style="color:var(--blue)">${txns.length}</div><div class="insight-label">Transactions (${window.getGlobalPeriod ? window.getGlobalPeriod() : 30}D)</div></div>
       </div>
       <div class="pnl"><div class="pnl-hd"><h3>📈 Spending Over Time</h3></div><div class="chart-w"><canvas id="spendOverTimeChart"></canvas></div></div>
       <div class="insight-card"><h4>🏆 Top Spending Categories</h4>${catHtml}</div>
@@ -903,12 +922,6 @@ const FinanceViews = {
         }
       };
     }
-
-    // Wire period toggle
-    this.wirePeriodToggle('insPeriodToggle', (days) => {
-      self.insightsPeriod = days;
-      self.renderInsights(allTxns, history);
-    });
 
     FinanceCharts.spendingOverTime('spendOverTimeChart', txns, dm);
     FinanceCharts.dayOfWeekBar('dowChart', txns, dm);

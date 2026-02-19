@@ -1,7 +1,7 @@
 // Main application logic
 (function(){
   'use strict';
-  var sa = CONFIG.ACCOUNTS.map(a=>a.name), sDays=7, sMonth='', sfOpen=false, tab='overview';
+  var sa = CONFIG.ACCOUNTS.map(a=>a.name), sMonth='', sfOpen=false, tab='overview';
   var dm = dataManager;
   var allTxns = []; // cached full transaction set
   var globalPeriod = 7; // universal period for whole app
@@ -12,7 +12,7 @@
     console.log('🚀 App init');
     FinanceViews.init(dm);
     wireNav(); wireCur(); wireGlobalPeriod();
-    buildFilter(); wirePeriods(); wireMonth();
+    buildFilter(); wireMonth();
     showGlobalSpinner();
     console.log('📡 Fetching data...');
     try { await dm.fetchAll(); } catch(e) { console.error('fetchAll failed:', e); }
@@ -130,26 +130,12 @@
     document.getElementById('sfLbl').textContent=n===t?'🏦 All Accounts':n===0?'🏦 None':'🏦 '+n+' Account'+(n>1?'s':'');
   }
 
-  // PERIODS
-  function wirePeriods(){
-    document.querySelectorAll('#statements .pbtn').forEach(b=>{
-      b.onclick=()=>{
-        document.querySelectorAll('#statements .pbtn').forEach(x=>x.classList.remove('on'));
-        b.classList.add('on');
-        document.getElementById('sMon').value='';document.getElementById('sMon').classList.remove('on');
-        sDays=parseInt(b.dataset.d);sMonth='';renderStmt();
-      };
-    });
-  }
   function wireMonth(){
     document.getElementById('sMon').onchange=e=>{
       if(e.target.value){
-        document.querySelectorAll('#statements .pbtn').forEach(x=>x.classList.remove('on'));
-        e.target.classList.add('on');sMonth=e.target.value;sDays=0;
+        e.target.classList.add('on');sMonth=e.target.value;
       }else{
-        e.target.classList.remove('on');
-        document.querySelector('#statements .pbtn[data-d="7"]').classList.add('on');
-        sMonth='';sDays=7;
+        e.target.classList.remove('on');sMonth='';
       }
       renderStmt();
     };
@@ -272,13 +258,14 @@
   async function renderStmt(){
     var el=document.getElementById('stmtList'),sm=document.getElementById('stmtSum');
     el.innerHTML = FinanceViews.spinner();
+    var days = globalPeriod;
     var data;
     if(sMonth){
       var raw=await dm.fetchTransactions(sMonth,sa.length<8?sa:null);
       data=raw.map(e=>trRow(e)).filter(t=>sa.includes(t.account)).sort((a,b)=>(b.date||0)-(a.date||0));
-    }else if(sDays>7){
+    }else if(days>7){
       var raw=await dm.fetchTransactions(null,sa.length<8?sa:null);
-      var cut=new Date();cut.setDate(cut.getDate()-sDays);cut.setHours(0,0,0,0);
+      var cut=new Date();cut.setDate(cut.getDate()-days);cut.setHours(0,0,0,0);
       data=raw.map(e=>trRow(e)).filter(t=>t.date&&t.date>=cut&&sa.includes(t.account)).sort((a,b)=>(b.date||0)-(a.date||0));
     }else{
       data=dm.getTransactions().filter(t=>sa.includes(t.account));
