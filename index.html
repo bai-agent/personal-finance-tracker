@@ -1,214 +1,544 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>B&K Finance Tracker</title>
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="B&K Finance">
-  <meta name="theme-color" content="#0c1222">
-  <link rel="manifest" href="manifest.json">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>B&K Finance Tracker</title>
+<meta name="theme-color" content="#0c1222">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+/* ===== TOKENS ===== */
+:root {
+  --bg: #0c1222;
+  --card: #151d30;
+  --card2: #1a2540;
+  --border: #1e2d4a;
+  --text: #e8edf5;
+  --sub: #7e90b5;
+  --dim: #4d6080;
+  --blue: #4f8cff;
+  --green: #34d399;
+  --red: #f87171;
+  --purple: #a78bfa;
+  --r: 16px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,sans-serif;
+  background:var(--bg);color:var(--text);
+  min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+
+/* ===== HEADER ===== */
+.hdr{
+  position:sticky;top:0;z-index:100;
+  background:rgba(12,18,34,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);padding:14px 20px;
+}
+.hdr-inner{display:flex;justify-content:space-between;align-items:center;max-width:540px;margin:0 auto}
+.hdr-title{font-size:1.1rem;font-weight:700}
+.hdr-right{display:flex;gap:8px;align-items:center}
+.btn-cur{
+  background:var(--blue);color:#fff;border:none;padding:6px 14px;border-radius:8px;
+  font-size:.75rem;font-weight:700;cursor:pointer;
+}
+.btn-cur.gbp{background:var(--purple)}
+.btn-cur:active{transform:scale(.93)}
+.btn-ref{background:var(--card2);border:1px solid var(--border);color:var(--sub);
+  width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:1.1rem;border:none}
+.btn-ref:active{opacity:.7}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== NAV ===== */
+.nav{max-width:540px;margin:0 auto;padding:10px 20px 4px}
+.nav select{
+  width:100%;padding:12px 40px 12px 16px;
+  background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;
+  font-size:.95rem;font-weight:500;appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Cpath fill='%237e90b5' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
+
+/* ===== MAIN ===== */
+.main{max-width:540px;margin:0 auto;padding:0 20px 90px}
+.pg{display:none}
+.pg.on{display:block}
+
+/* ===== HERO ===== */
+.hero{text-align:center;padding:24px 0 18px}
+.hero-lbl{font-size:.7rem;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:4px}
+.hero-amt{font-size:2.2rem;font-weight:800;letter-spacing:-1px}
+.hero-amt.pos{color:var(--green)}.hero-amt.neg{color:var(--red)}
+.hero-sub{font-size:.72rem;color:var(--dim);margin-top:5px}
+
+/* ===== STAT ROW ===== */
+.stats{display:flex;gap:8px;margin-bottom:14px}
+.stat{flex:1;text-align:center;padding:12px 8px;border-radius:12px}
+.stat.g{background:rgba(52,211,153,.08)}.stat.r{background:rgba(248,113,113,.08)}.stat.b{background:rgba(79,140,255,.08)}
+.stat-lbl{font-size:.62rem;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.stat-val{font-size:1rem;font-weight:700}
+.stat.g .stat-val{color:var(--green)}.stat.r .stat-val{color:var(--red)}.stat.b .stat-val{color:var(--blue)}
+
+/* ===== PEOPLE ===== */
+.ppl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.pcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.pcard.wide{grid-column:1/-1;margin-bottom:6px}
+.pcard h4{font-size:.82rem;font-weight:700;margin-bottom:8px}
+.prow{display:flex;justify-content:space-between;font-size:.78rem;padding:4px 0;border-bottom:1px solid rgba(30,45,74,.5)}
+.prow:last-child{border:none}
+.prow span:first-child{color:var(--sub)}
+.prow span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+.pcard.wide .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+
+/* ===== PANEL (card wrapper) ===== */
+.pnl{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.pnl-hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+.pnl-hd h3{font-size:.88rem;font-weight:600}
+.pnl-bd{/* transactions handle own padding */}
+.btn-t{background:none;border:none;color:var(--blue);font-size:.78rem;font-weight:600;cursor:pointer}
+
+/* ===== ACCOUNT CARDS ===== */
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:8px}
+@media(max-width:380px){.agrid{grid-template-columns:1fr}}
+.acard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.acard .icon{font-size:1.1rem;margin-bottom:4px}
+.acard .name{font-size:.76rem;font-weight:600;line-height:1.3}
+.acard .purpose{font-size:.64rem;color:var(--dim);margin:2px 0 8px}
+.acard .bal{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums}
+.acard .bal.pos{color:var(--green)}.acard .bal.neg{color:var(--red)}
+.acard .native{font-size:.6rem;color:var(--dim);margin-top:2px}
+.acard .chg{font-size:.64rem;margin-top:4px;font-weight:500}
+.acard .chg.pos{color:var(--green)}.acard .chg.neg{color:var(--red)}
+
+/* ===== STATEMENTS FILTER ===== */
+.sf-wrap{position:relative;margin:12px 18px 0}
+.sf-btn{
+  width:100%;display:flex;justify-content:space-between;align-items:center;
+  padding:12px 16px;background:var(--card2);border:1px solid var(--border);border-radius:12px;
+  color:var(--text);font-size:.86rem;font-weight:500;cursor:pointer;
+}
+.sf-btn:active{border-color:var(--blue)}
+.sf-chev{color:var(--dim);transition:transform .2s}
+.sf-btn.open .sf-chev{transform:rotate(180deg)}
+
+.sf-panel{
+  display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:300;
+  background:var(--card2);border:1px solid var(--border);border-radius:14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.5);max-height:65vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+}
+.sf-panel.open{display:block}
+
+.sf-item{
+  display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;
+  border-bottom:1px solid rgba(30,45,74,.4);user-select:none;-webkit-user-select:none;
+}
+.sf-item:last-child{border:none}
+.sf-item:active{background:var(--card)}
+.sf-item input{width:20px;height:20px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+.sf-info{flex:1;min-width:0}
+.sf-name{font-size:.82rem;font-weight:500}
+.sf-sub{font-size:.66rem;color:var(--dim);margin-top:1px}
+.sf-badge{font-size:.6rem;font-weight:700;background:var(--border);color:var(--sub);padding:2px 7px;border-radius:5px}
+
+.sf-actions{
+  display:flex;align-items:center;justify-content:flex-end;gap:12px;
+  padding:10px 18px;border-top:1px solid var(--border);background:var(--card);position:sticky;bottom:0;
+}
+.btn-f{background:var(--blue);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer}
+
+/* ===== PERIOD ROW ===== */
+.periods{display:flex;gap:6px;padding:12px 18px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.pbtn{
+  padding:8px 14px;border-radius:8px;background:var(--bg);color:var(--sub);
+  border:1px solid var(--border);font-size:.76rem;font-weight:600;cursor:pointer;
+}
+.pbtn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.pbtn:active{transform:scale(.95)}
+.pmon{
+  padding:8px 28px 8px 10px;background:var(--bg);color:var(--sub);
+  border:1px solid var(--border);border-radius:8px;font-size:.76rem;font-weight:500;
+  appearance:none;-webkit-appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='%237e90b5' d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+}
+.pmon.on{background:var(--blue);color:#fff;border-color:var(--blue);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Cpath fill='white' d='M5 7L0 2h10z'/%3E%3C/svg%3E")}
+
+/* ===== STMT SUMMARY ===== */
+.ss{display:flex;gap:14px;padding:10px 18px;font-size:.76rem;color:var(--sub);border-bottom:1px solid var(--border)}
+.ss b.pos{color:var(--green)}.ss b.neg{color:var(--red)}
+
+/* ===== TRANSACTIONS ===== */
+.tx{display:flex;justify-content:space-between;align-items:flex-start;padding:13px 18px;gap:10px;border-bottom:1px solid rgba(30,45,74,.35)}
+.tx:last-child{border:none}
+.tx-l{flex:1;min-width:0}
+.tx-d{font-size:.84rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-m{font-size:.66rem;color:var(--dim);margin-top:3px;line-height:1.35}
+.tx-r{text-align:right;flex-shrink:0}
+.tx-a{font-size:.88rem;font-weight:700;font-variant-numeric:tabular-nums}
+.tx-a.pos{color:var(--green)}.tx-a.neg{color:var(--red)}
+.tx-n{font-size:.58rem;color:var(--dim);margin-top:1px}
+.tx-b{font-size:.58rem;color:var(--sub);margin-top:2px}
+
+/* ===== GOALS ===== */
+.goal{padding:14px 18px;border-bottom:1px solid rgba(30,45,74,.35)}
+.goal:last-child{border:none}
+.goal-top{display:flex;justify-content:space-between;margin-bottom:8px}
+.goal-nm{font-size:.86rem;font-weight:600}
+.goal-ds{font-size:.66rem;color:var(--dim);margin-top:2px}
+.goal-pc{font-size:1rem;font-weight:800;color:var(--blue)}
+.pbar{height:5px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.pfill{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:3px;transition:width .5s}
+.goal-am{font-size:.72rem;color:var(--sub)}
+
+/* ===== CHART ===== */
+.chart-w{padding:14px}
+.chart-w canvas{width:100%!important;max-height:200px}
+
+/* ===== EMPTY ===== */
+.empty{text-align:center;color:var(--dim);padding:32px 16px;font-size:.84rem}
+
+/* ===== BILL STATUS ===== */
+.bst{font-size:.58rem;font-weight:700;margin-top:2px}
+.bst.od{color:var(--red)}.bst.ds{color:#fbbf24}
+
+/* ===== BACKDROP ===== */
+.bkdp{display:none;position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.45)}
+.bkdp.open{display:block}
+
+/* ===== FOOTER ===== */
+.ftr{position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:var(--card);border-top:1px solid var(--border);
+  text-align:center;padding:10px 20px;font-size:.66rem;color:var(--dim)}
+</style>
 </head>
 <body>
 
-  <!-- ===== HEADER ===== -->
-  <header class="app-header">
-    <div class="header-inner">
-      <div class="header-left">
-        <span class="header-logo">💰</span>
-        <span class="header-title">B&K Finances</span>
-      </div>
-      <div class="header-right">
-        <button class="btn-currency" id="currencyToggle">$ AUD</button>
-        <button class="btn-icon" id="refreshBtn" aria-label="Refresh">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-        </button>
-      </div>
+<!-- HEADER -->
+<header class="hdr"><div class="hdr-inner">
+  <div class="hdr-title">💰 B&K Finances</div>
+  <div class="hdr-right">
+    <button class="btn-cur" id="curBtn">$ AUD</button>
+    <button class="btn-ref" id="refBtn">🔄</button>
+  </div>
+</div></header>
+
+<!-- NAV -->
+<nav class="nav"><select id="nav">
+  <option value="overview">📊  Overview</option>
+  <option value="accounts">🏦  Accounts</option>
+  <option value="statements">📄  Statements</option>
+  <option value="wages">💵  Wages</option>
+  <option value="bills">📋  Bills</option>
+  <option value="savings">💎  Savings</option>
+  <option value="insights">💡  Insights</option>
+</select></nav>
+
+<!-- CONTENT -->
+<div class="main">
+
+  <!-- OVERVIEW -->
+  <div id="overview" class="pg on">
+    <div class="hero">
+      <div class="hero-lbl">Total Balance</div>
+      <div class="hero-amt" id="totalBal">$0.00</div>
+      <div class="hero-sub">across all accounts</div>
     </div>
-  </header>
+    <div class="stats">
+      <div class="stat g"><div class="stat-lbl">Income</div><div class="stat-val" id="sInc">$0</div></div>
+      <div class="stat r"><div class="stat-lbl">Expenses</div><div class="stat-val" id="sExp">$0</div></div>
+      <div class="stat b"><div class="stat-lbl">Saved</div><div class="stat-val" id="sSav">--%</div></div>
+    </div>
+    <div class="ppl">
+      <div class="pcard"><h4>👤 Bailey</h4><div class="prow"><span>Wages</span><span id="bW">$0</span></div><div class="prow"><span>Spending</span><span id="bS">$0</span></div></div>
+      <div class="pcard"><h4>👤 Katie</h4><div class="prow"><span>Wages</span><span id="kW">$0</span></div><div class="prow"><span>Spending</span><span id="kS">$0</span></div></div>
+    </div>
+    <div class="pcard wide"><h4>🤝 Joint</h4><div class="pgrid"><div class="prow"><span>Bills</span><span id="jB">$0</span></div><div class="prow"><span>Savings</span><span id="jSv">$0</span></div><div class="prow"><span>Food</span><span id="jF">$0</span></div><div class="prow"><span>Credit</span><span id="jC">$0</span></div></div></div>
+    <div class="pnl"><div class="pnl-hd"><h3>Recent Transactions</h3><button class="btn-t" id="viewAll">View all</button></div><div class="pnl-bd" id="recTxns"><div class="empty">Loading…</div></div></div>
+  </div>
 
-  <!-- ===== NAV ===== -->
-  <nav class="app-nav">
-    <select id="navDropdown" class="nav-select">
-      <option value="overview">📊  Overview</option>
-      <option value="accounts">🏦  Accounts</option>
-      <option value="statements">📄  Statements</option>
-      <option value="wages">💵  Wages</option>
-      <option value="bills">📋  Bills</option>
-      <option value="savings">💎  Savings</option>
-      <option value="insights">💡  Insights</option>
-    </select>
-  </nav>
+  <!-- ACCOUNTS -->
+  <div id="accounts" class="pg">
+    <div class="agrid" id="aCards"></div>
+  </div>
 
-  <!-- ===== CONTENT ===== -->
-  <main class="app-main">
-
-    <!-- ========== OVERVIEW ========== -->
-    <section id="overview" class="page active">
-
-      <!-- Hero Balance -->
-      <div class="hero-balance">
-        <div class="hero-label">Total Balance</div>
-        <div class="hero-amount" id="overallBalance">$0.00</div>
-        <div class="hero-sub" id="overallSub">across all accounts</div>
-      </div>
-
-      <!-- Quick Stats -->
-      <div class="stats-row">
-        <div class="stat-pill green">
-          <div class="stat-label">Income</div>
-          <div class="stat-value" id="monthlyIncome">$0</div>
-        </div>
-        <div class="stat-pill red">
-          <div class="stat-label">Expenses</div>
-          <div class="stat-value" id="monthlyExpenses">$0</div>
-        </div>
-        <div class="stat-pill blue">
-          <div class="stat-label">Saved</div>
-          <div class="stat-value" id="savingsRate">--%</div>
+  <!-- STATEMENTS -->
+  <div id="statements" class="pg">
+    <div class="pnl">
+      <div class="pnl-hd"><h3>Statements</h3></div>
+      <div class="sf-wrap">
+        <button class="sf-btn" id="sfBtn"><span id="sfLbl">🏦 All Accounts</span><span class="sf-chev">▾</span></button>
+        <div class="sf-panel" id="sfPanel">
+          <div id="sfList"></div>
+          <div class="sf-actions"><button class="btn-t" id="sfAll">Select all</button><button class="btn-t" id="sfNone">None</button><button class="btn-f" id="sfDone">Done</button></div>
         </div>
       </div>
-
-      <!-- People -->
-      <div class="people-section">
-        <div class="person-card">
-          <div class="person-name">👤 Bailey</div>
-          <div class="person-row"><span>Wages</span><span id="baileyWages">$0</span></div>
-          <div class="person-row"><span>Spending</span><span id="baileySpending">$0</span></div>
-        </div>
-        <div class="person-card">
-          <div class="person-name">👤 Katie</div>
-          <div class="person-row"><span>Wages</span><span id="katieWages">$0</span></div>
-          <div class="person-row"><span>Spending</span><span id="katieSpending">$0</span></div>
-        </div>
+      <div class="periods">
+        <button class="pbtn on" data-d="7">7D</button>
+        <button class="pbtn" data-d="30">30D</button>
+        <button class="pbtn" data-d="90">90D</button>
+        <select class="pmon" id="sMon"><option value="">Month…</option></select>
       </div>
-      <div class="person-card joint-card">
-        <div class="person-name">🤝 Joint</div>
-        <div class="person-grid">
-          <div class="person-row"><span>Bills</span><span id="jointBills">$0</span></div>
-          <div class="person-row"><span>Savings</span><span id="jointSavings">$0</span></div>
-          <div class="person-row"><span>Food</span><span id="jointFood">$0</span></div>
-          <div class="person-row"><span>Credit</span><span id="jointCredit">$0</span></div>
-        </div>
-      </div>
+      <div class="ss" id="stmtSum"></div>
+      <div class="pnl-bd" id="stmtList"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="pnl"><div class="pnl-hd"><h3>Balance Over Time</h3></div><div class="chart-w"><canvas id="balChart"></canvas></div></div>
+  </div>
 
-      <!-- Recent Transactions -->
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">Recent Transactions</span>
-          <button class="btn-text" id="viewAllBtn">View all</button>
-        </div>
-        <div class="panel-body" id="recentTransactions">
-          <div class="empty-state">Loading…</div>
-        </div>
-      </div>
-    </section>
+  <!-- WAGES -->
+  <div id="wages" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💵 Wage History</h3></div><div class="pnl-bd" id="wContent"><div class="empty">Loading…</div></div></div></div>
 
-    <!-- ========== ACCOUNTS ========== -->
-    <section id="accounts" class="page">
-      <div class="acct-grid" id="accountCards"></div>
-    </section>
+  <!-- BILLS -->
+  <div id="bills" class="pg"><div class="pnl"><div class="pnl-hd"><h3>📋 Recurring Bills</h3></div><div class="pnl-bd" id="biContent"><div class="empty">Loading…</div></div></div></div>
 
-    <!-- ========== STATEMENTS ========== -->
-    <section id="statements" class="page">
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Statements</span></div>
+  <!-- SAVINGS -->
+  <div id="savings" class="pg"><div class="pnl"><div class="pnl-hd"><h3>💎 Savings Goals</h3></div><div class="pnl-bd" id="svContent"><div class="empty">Loading…</div></div></div></div>
 
-        <!-- Account multi-select filter -->
-        <div class="stmt-filter-row">
-          <div class="filter-dropdown-wrap">
-            <button class="filter-trigger" id="stmtFilterBtn">
-              <span class="filter-trigger-text" id="stmtFilterLabel">🏦 All Accounts</span>
-              <svg class="filter-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-            </button>
-            <div class="filter-panel" id="stmtFilterPanel">
-              <div class="filter-list" id="stmtFilterList"></div>
-              <div class="filter-actions">
-                <button class="btn-text" id="stmtSelectAll">Select all</button>
-                <button class="btn-text" id="stmtSelectNone">None</button>
-                <button class="btn-filled" id="stmtDone">Done</button>
-              </div>
-            </div>
-          </div>
-        </div>
+  <!-- INSIGHTS -->
+  <div id="insights" class="pg"><div class="pnl"><div class="pnl-hd"><h3>🤖 BAI Insights</h3></div><div class="pnl-bd"><div class="empty">Upload statements to #finances to get insights</div></div></div></div>
 
-        <!-- Period selector -->
-        <div class="period-row">
-          <button class="period-btn active" data-days="7">7 Days</button>
-          <button class="period-btn" data-days="30">30 Days</button>
-          <button class="period-btn" data-days="90">90 Days</button>
-          <select id="stmtMonth" class="period-month">
-            <option value="">By Month…</option>
-          </select>
-        </div>
+</div>
 
-        <!-- Selected totals -->
-        <div class="stmt-summary" id="stmtSummary"></div>
+<!-- FOOTER -->
+<footer class="ftr"><span id="fSrc">—</span> · <span id="fRate">£1 = $—</span> · BAI 🤖</footer>
 
-        <!-- Transaction list -->
-        <div class="panel-body" id="stmtList">
-          <div class="empty-state">Loading…</div>
-        </div>
-      </div>
+<!-- BACKDROP -->
+<div class="bkdp" id="bkdp"></div>
 
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Balance Over Time</span></div>
-        <div class="chart-wrap"><canvas id="balanceChart"></canvas></div>
-      </div>
-    </section>
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script>
+(function(){
+  'use strict';
+  var sa = CONFIG.ACCOUNTS.map(a=>a.name), sDays=7, sMonth='', sfOpen=false, tab='overview';
+  var dm = dataManager;
 
-    <!-- ========== WAGES ========== -->
-    <section id="wages" class="page">
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Wage History</span></div>
-        <div class="panel-body" id="wagesContent"><div class="empty-state">Loading…</div></div>
-      </div>
-    </section>
+  document.addEventListener('DOMContentLoaded', async()=>{
+    wireNav(); wireCur(); wireRef();
+    document.getElementById('viewAll').onclick=()=>go('statements');
+    buildFilter(); wirePeriods(); wireMonth();
+    await dm.fetchAll();
+    renderAll();
+  });
 
-    <!-- ========== BILLS ========== -->
-    <section id="bills" class="page">
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Recurring Bills</span></div>
-        <div class="panel-body" id="billsContent"><div class="empty-state">Loading…</div></div>
-      </div>
-    </section>
+  function renderAll(){renderOverview();renderAccts();popMonths();renderFtr()}
 
-    <!-- ========== SAVINGS ========== -->
-    <section id="savings" class="page">
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">Savings Goals</span></div>
-        <div class="panel-body" id="savingsContent"><div class="empty-state">Loading…</div></div>
-      </div>
-    </section>
+  // NAV
+  function wireNav(){
+    var n=document.getElementById('nav');
+    n.onchange=e=>go(e.target.value);
+    var h=location.hash.slice(1);
+    if(h&&document.getElementById(h)){n.value=h;go(h)}
+  }
+  function go(t){
+    tab=t;
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+    var el=document.getElementById(t);if(el)el.classList.add('on');
+    document.getElementById('nav').value=t;
+    history.replaceState(null,'','#'+t);
+    if(t==='statements')renderStmt();
+    if(t==='wages')renderWages();
+    if(t==='bills')renderBills();
+    if(t==='savings')renderSavings();
+  }
 
-    <!-- ========== INSIGHTS ========== -->
-    <section id="insights" class="page">
-      <div class="panel">
-        <div class="panel-header"><span class="panel-title">BAI Insights</span></div>
-        <div class="panel-body" id="insightsContent">
-          <div class="empty-state">Upload statements to #finances to get insights</div>
-        </div>
-      </div>
-    </section>
+  // CURRENCY
+  function wireCur(){
+    var b=document.getElementById('curBtn');
+    b.onclick=()=>{
+      dm.displayCurrency=dm.displayCurrency==='AUD'?'GBP':'AUD';
+      b.textContent=dm.displayCurrency==='AUD'?'$ AUD':'£ GBP';
+      b.classList.toggle('gbp',dm.displayCurrency==='GBP');
+      renderAll();if(tab==='statements')renderStmt();
+    };
+  }
 
-  </main>
+  // REFRESH
+  function wireRef(){
+    var b=document.getElementById('refBtn');
+    b.onclick=async()=>{
+      b.style.animation='spin .8s linear infinite';
+      await dm.fetchAll();renderAll();
+      if(tab==='statements')renderStmt();
+      b.style.animation='none';
+    };
+  }
 
-  <!-- ===== FOOTER ===== -->
-  <footer class="app-footer">
-    <span id="dataSourceLabel">—</span> · <span id="exchangeRateLabel">£1 = $—</span> · BAI 🤖
-  </footer>
+  // FILTER
+  function buildFilter(){
+    var list=document.getElementById('sfList');
+    list.innerHTML=CONFIG.ACCOUNTS.map(a=>
+      '<label class="sf-item"><input type="checkbox" value="'+a.name+'" checked>'+
+      '<div class="sf-info"><div class="sf-name">'+a.icon+' '+a.name+'</div>'+
+      '<div class="sf-sub">'+a.user+' · '+a.purpose+'</div></div>'+
+      '<span class="sf-badge">'+a.currency+'</span></label>'
+    ).join('');
+    var btn=document.getElementById('sfBtn'),panel=document.getElementById('sfPanel'),bk=document.getElementById('bkdp');
+    btn.onclick=e=>{e.stopPropagation();sfOpen=!sfOpen;panel.classList.toggle('open',sfOpen);btn.classList.toggle('open',sfOpen);bk.classList.toggle('open',sfOpen)};
+    bk.onclick=closeF;
+    list.onchange=syncF;
+    document.getElementById('sfAll').onclick=()=>{list.querySelectorAll('input').forEach(c=>c.checked=true);syncF()};
+    document.getElementById('sfNone').onclick=()=>{list.querySelectorAll('input').forEach(c=>c.checked=false);syncF()};
+    document.getElementById('sfDone').onclick=()=>{closeF();renderStmt()};
+  }
+  function closeF(){sfOpen=false;document.getElementById('sfPanel').classList.remove('open');document.getElementById('sfBtn').classList.remove('open');document.getElementById('bkdp').classList.remove('open')}
+  function syncF(){
+    var ch=document.querySelectorAll('#sfList input:checked');sa=[...ch].map(c=>c.value);
+    var n=sa.length,t=CONFIG.ACCOUNTS.length;
+    document.getElementById('sfLbl').textContent=n===t?'🏦 All Accounts':n===0?'🏦 None':'🏦 '+n+' Account'+(n>1?'s':'');
+  }
 
-  <!-- ===== BACKDROP (for dropdown) ===== -->
-  <div class="backdrop" id="backdrop"></div>
+  // PERIODS
+  function wirePeriods(){
+    document.querySelectorAll('.pbtn').forEach(b=>{
+      b.onclick=()=>{
+        document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        document.getElementById('sMon').value='';document.getElementById('sMon').classList.remove('on');
+        sDays=parseInt(b.dataset.d);sMonth='';renderStmt();
+      };
+    });
+  }
+  function wireMonth(){
+    document.getElementById('sMon').onchange=e=>{
+      if(e.target.value){
+        document.querySelectorAll('.pbtn').forEach(x=>x.classList.remove('on'));
+        e.target.classList.add('on');sMonth=e.target.value;sDays=0;
+      }else{
+        e.target.classList.remove('on');
+        document.querySelector('.pbtn[data-d="7"]').classList.add('on');
+        sMonth='';sDays=7;
+      }
+      renderStmt();
+    };
+  }
+  function popMonths(){
+    var ldg=dm.getLedger(),ms=new Set();
+    ldg.forEach(e=>{if(e.date)ms.add(e.date.getFullYear()+'-'+String(e.date.getMonth()+1).padStart(2,'0'))});
+    var sel=document.getElementById('sMon');while(sel.options.length>1)sel.remove(1);
+    [...ms].sort().reverse().forEach(m=>{
+      var o=document.createElement('option');o.value=m;
+      var p=m.split('-');o.textContent=new Date(p[0],p[1]-1).toLocaleString('en-AU',{month:'short',year:'numeric'});
+      sel.appendChild(o);
+    });
+  }
 
-  <script src="js/config.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/app.js"></script>
+  // OVERVIEW
+  function renderOverview(){
+    var a=dm.getAccounts(),l=dm.getLedger();
+    var tot=a.reduce((s,x)=>s+x.balance,0);
+    var h=document.getElementById('totalBal');h.textContent=dm.formatCurrency(tot);h.className='hero-amt '+(tot>=0?'pos':'neg');
+    var inc=l.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
+    var exp=Math.abs(l.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
+    document.getElementById('sInc').textContent=dm.formatCurrency(inc);
+    document.getElementById('sExp').textContent=dm.formatCurrency(exp);
+    document.getElementById('sSav').textContent=(inc>0?((inc-exp)/inc*100).toFixed(0):'--')+'%';
+    var b=n=>{var x=a.find(x=>x.name===n);return dm.formatCurrency(x?x.balance:0)};
+    document.getElementById('bW').textContent=b('BW Personal (Commonwealth)');
+    document.getElementById('bS').textContent=b('BW Personal (Starling)');
+    document.getElementById('kW').textContent=b('Katie Personal (Commonwealth)');
+    document.getElementById('kS').textContent=b('Katie Personal (Starling)');
+    document.getElementById('jB').textContent=b('Joint (Commonwealth)');
+    document.getElementById('jSv').textContent=b('Joint Saver (Commonwealth)');
+    document.getElementById('jF').textContent=b('Joint (Starling)');
+    document.getElementById('jC').textContent=b('Credit Card (Capital One)');
+    var el=document.getElementById('recTxns');
+    el.innerHTML=l.length?l.slice(0,20).map(t=>tx(t)).join(''):'<div class="empty">No transactions in the last 7 days</div>';
+  }
+
+  // ACCOUNTS
+  function renderAccts(){
+    var a=dm.getAccounts(),g=document.getElementById('aCards');
+    g.innerHTML=a.map(x=>{
+      var c=CONFIG.ACCOUNTS.find(c=>c.name===x.name)||{};
+      var nv=x.nativeCurrency!==dm.displayCurrency?'<div class="native">'+dm.formatCurrency(x.nativeBalance,x.nativeCurrency)+' '+x.nativeCurrency+'</div>':'';
+      return '<div class="acard"><div class="icon">'+(c.icon||'💰')+'</div><div class="name">'+x.name.replace(/ \(.*\)/,'')+'</div>'+
+        '<div class="purpose">'+x.purpose+' · '+x.nativeCurrency+'</div>'+
+        '<div class="bal '+(x.balance>=0?'pos':'neg')+'">'+dm.formatCurrency(x.balance)+'</div>'+nv+
+        '<div class="chg '+(x.change>=0?'pos':'neg')+'">'+(x.change>=0?'↗':'↘')+' '+dm.formatCurrency(Math.abs(x.change))+'</div></div>';
+    }).join('');
+  }
+
+  // STATEMENTS
+  async function renderStmt(){
+    var el=document.getElementById('stmtList'),sm=document.getElementById('stmtSum');
+    el.innerHTML='<div class="empty">Loading…</div>';
+    var data;
+    if(sMonth){
+      var raw=await dm.fetchLedger(sMonth,sa.length<8?sa:null);
+      data=raw.map(e=>trRow(e)).filter(t=>sa.includes(t.account)).sort((a,b)=>(b.date||0)-(a.date||0));
+    }else if(sDays>7){
+      var raw=await dm.fetchLedger(null,sa.length<8?sa:null);
+      var cut=new Date();cut.setDate(cut.getDate()-sDays);cut.setHours(0,0,0,0);
+      data=raw.map(e=>trRow(e)).filter(t=>t.date&&t.date>=cut&&sa.includes(t.account)).sort((a,b)=>(b.date||0)-(a.date||0));
+    }else{
+      data=dm.getLedger().filter(t=>sa.includes(t.account));
+    }
+    var tIn=data.filter(t=>t.amount>0).reduce((s,t)=>s+t.convertedAmount,0);
+    var tOut=Math.abs(data.filter(t=>t.amount<0).reduce((s,t)=>s+t.convertedAmount,0));
+    sm.innerHTML='In: <b class="pos">'+dm.formatCurrency(tIn)+'</b> &nbsp; Out: <b class="neg">'+dm.formatCurrency(tOut)+'</b> &nbsp; '+data.length+' txns';
+    el.innerHTML=data.length?data.map(t=>tx(t,true)).join(''):'<div class="empty">No transactions found</div>';
+    renderChart(data);
+  }
+  function trRow(e){
+    var c=e['Currency']||dm.getAccountCurrency(e['Account']);
+    return{date:e['Date']?new Date(e['Date']):null,description:e['Description']||'',amount:parseFloat(e['Amount'])||0,
+      balanceAfter:parseFloat(e['Balance After'])||0,category:e['Category']||'',account:e['Account']||'',currency:c,
+      convertedAmount:dm.convert(parseFloat(e['Amount'])||0,c),convertedBalance:dm.convert(parseFloat(e['Balance After'])||0,c)};
+  }
+  function renderChart(data){
+    var cv=document.getElementById('balChart');if(!cv||!window.Chart)return;
+    var s=[...data].sort((a,b)=>(a.date||0)-(b.date||0));if(!s.length)return;
+    if(cv._c)cv._c.destroy();
+    cv._c=new Chart(cv,{type:'line',data:{
+      labels:s.map(e=>e.date?e.date.toLocaleDateString('en-AU',{day:'numeric',month:'short'}):''),
+      datasets:[{data:s.map(e=>e.convertedBalance),borderColor:'#4f8cff',backgroundColor:'rgba(79,140,255,.06)',
+        fill:true,tension:.35,pointRadius:0,borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{maxTicksLimit:6,color:'#4d6080',font:{size:9}},grid:{display:false}},
+          y:{ticks:{color:'#4d6080',font:{size:9},callback:v=>dm.formatCurrency(v)},grid:{color:'rgba(30,45,74,.4)'}}}}
+    });
+  }
+
+  // WAGES/BILLS/SAVINGS
+  function renderWages(){
+    var w=dm.cache.wages||[],el=document.getElementById('wContent');
+    if(!w.length){el.innerHTML='<div class="empty">No wage data yet</div>';return}
+    el.innerHTML=w.map(e=>{var c=e['Currency']||'AUD',a=parseFloat(e['Amount'])||0,cv=dm.convert(a,c);
+      var n=c!==dm.displayCurrency?'<div class="tx-n">'+dm.formatCurrency(a,c)+' '+c+'</div>':'';
+      return '<div class="tx"><div class="tx-l"><div class="tx-d">'+(e['User']||'')+'</div><div class="tx-m">'+fd(e['Date'])+' · '+(e['Day of Week']||'')+' · '+(e['Account']||'')+'</div></div><div class="tx-r"><div class="tx-a pos">'+dm.formatCurrency(cv)+'</div>'+n+'</div></div>'}).join('');
+  }
+  function renderBills(){
+    var b=dm.cache.bills||[],el=document.getElementById('biContent');
+    if(!b.length){el.innerHTML='<div class="empty">No bills detected yet</div>';return}
+    el.innerHTML=b.map(e=>{var c=e['Currency']||'AUD',a=Math.abs(parseFloat(e['Amount']))||0,st=e['Status']||'Active',sc=st==='Overdue'?'od':st==='Due Soon'?'ds':'';
+      return '<div class="tx"><div class="tx-l"><div class="tx-d">'+(e['Bill Name']||'')+'</div><div class="tx-m">'+(e['Frequency']||'Monthly')+' · Next: '+fd(e['Next Due Date'])+'</div></div><div class="tx-r"><div class="tx-a neg">'+dm.formatCurrency(dm.convert(a,c))+'</div><div class="bst '+sc+'">'+st+'</div></div></div>'}).join('');
+  }
+  function renderSavings(){
+    var g=dm.cache.savings||[],el=document.getElementById('svContent');
+    if(!g.length){el.innerHTML='<div class="empty">No goals set up</div>';return}
+    el.innerHTML=g.map(e=>{var tg=parseFloat(e['Target Amount'])||1,cu=parseFloat(e['Current Amount'])||0,pc=Math.min(100,cu/tg*100).toFixed(1);
+      return '<div class="goal"><div class="goal-top"><div><div class="goal-nm">'+(e['Goal Name']||'')+'</div><div class="goal-ds">'+(e['Description']||'')+'</div></div><div class="goal-pc">'+pc+'%</div></div><div class="pbar"><div class="pfill" style="width:'+pc+'%"></div></div><div class="goal-am">'+dm.formatCurrency(cu)+' / '+dm.formatCurrency(tg)+'</div></div>'}).join('');
+  }
+
+  // HELPERS
+  function tx(t,sb){
+    var p=t.amount>0,a=dm.formatCurrency(t.convertedAmount);
+    var n=t.currency!==dm.displayCurrency?'<div class="tx-n">'+dm.formatCurrency(t.amount,t.currency)+' '+t.currency+'</div>':'';
+    var bl=sb?'<div class="tx-b">Bal: '+dm.formatCurrency(t.convertedBalance)+'</div>':'';
+    return '<div class="tx"><div class="tx-l"><div class="tx-d">'+t.description+'</div><div class="tx-m">'+fd(t.date)+' · '+(t.account||'').replace(/ \(.*\)/,'')+' · '+t.category+'</div></div><div class="tx-r"><div class="tx-a '+(p?'pos':'neg')+'">'+(p?'+':'')+a+'</div>'+n+bl+'</div></div>';
+  }
+  function fd(d){if(!d)return'';var dt=new Date(d);return isNaN(dt)?'':dt.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'2-digit'})}
+  function renderFtr(){
+    document.getElementById('fSrc').textContent=dm.dataSource==='live'?'🟢 Live':'🟡 Demo';
+    document.getElementById('fRate').textContent='£1 = $'+(dm.exchangeRate.gbpToAud||1.95).toFixed(2);
+  }
+})();
+</script>
 </body>
 </html>
