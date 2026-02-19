@@ -112,46 +112,51 @@
 
     <!-- ========== ACCOUNTS ========== -->
     <section id="accounts" class="page">
-
-      <!-- Account Filter Dropdown -->
-      <div class="filter-dropdown-wrap">
-        <button class="filter-trigger" id="acctFilterBtn">
-          <span class="filter-trigger-text" id="acctFilterLabel">🏦 All Accounts (8)</span>
-          <svg class="filter-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="filter-panel" id="acctFilterPanel">
-          <div class="filter-list" id="acctFilterList"></div>
-          <div class="filter-actions">
-            <button class="btn-text" id="acctSelectAll">Select all</button>
-            <button class="btn-text" id="acctSelectNone">None</button>
-            <button class="btn-filled" id="acctDone">Done</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Selected Balance -->
-      <div class="selected-balance-bar">
-        <span class="sbb-label">Selected</span>
-        <span class="sbb-value" id="selectedBalance">$0.00</span>
-      </div>
-
-      <!-- Account Cards -->
       <div class="acct-grid" id="accountCards"></div>
     </section>
 
     <!-- ========== STATEMENTS ========== -->
     <section id="statements" class="page">
       <div class="panel">
-        <div class="panel-header"><span class="panel-title">Account Statement</span></div>
-        <div class="stmt-controls">
-          <select id="stmtAccount" class="ctrl-select"><option value="all">All Accounts</option></select>
-          <select id="stmtMonth" class="ctrl-select"><option value="">Last 7 Days</option></select>
+        <div class="panel-header"><span class="panel-title">Statements</span></div>
+
+        <!-- Account multi-select filter -->
+        <div class="stmt-filter-row">
+          <div class="filter-dropdown-wrap">
+            <button class="filter-trigger" id="stmtFilterBtn">
+              <span class="filter-trigger-text" id="stmtFilterLabel">🏦 All Accounts</span>
+              <svg class="filter-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="filter-panel" id="stmtFilterPanel">
+              <div class="filter-list" id="stmtFilterList"></div>
+              <div class="filter-actions">
+                <button class="btn-text" id="stmtSelectAll">Select all</button>
+                <button class="btn-text" id="stmtSelectNone">None</button>
+                <button class="btn-filled" id="stmtDone">Done</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div id="stmtBalanceBar"></div>
+
+        <!-- Period selector -->
+        <div class="period-row">
+          <button class="period-btn active" data-days="7">7 Days</button>
+          <button class="period-btn" data-days="30">30 Days</button>
+          <button class="period-btn" data-days="90">90 Days</button>
+          <select id="stmtMonth" class="period-month">
+            <option value="">By Month…</option>
+          </select>
+        </div>
+
+        <!-- Selected totals -->
+        <div class="stmt-summary" id="stmtSummary"></div>
+
+        <!-- Transaction list -->
         <div class="panel-body" id="stmtList">
-          <div class="empty-state">Select account & period</div>
+          <div class="empty-state">Loading…</div>
         </div>
       </div>
+
       <div class="panel">
         <div class="panel-header"><span class="panel-title">Balance Over Time</span></div>
         <div class="chart-wrap"><canvas id="balanceChart"></canvas></div>

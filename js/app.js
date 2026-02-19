@@ -2,9 +2,12 @@
 (function() {
   'use strict';
 
-  let selected = CONFIG.ACCOUNTS.map(a => a.name);
+  // Statement filter state
+  let stmtAccounts = CONFIG.ACCOUNTS.map(a => a.name);
+  let stmtDays = 7;       // 7, 30, 90, or 0 (month mode)
+  let stmtMonth = '';      // e.g. '2026-02'
+  let stmtFilterOpen = false;
   let currentTab = 'overview';
-  let filterOpen = false;
 
   // ===== INIT =====
   document.addEventListener('DOMContentLoaded', async () => {
@@ -12,18 +15,19 @@
     wireCurrency();
     wireRefresh();
     wireViewAll();
-    buildFilterDropdown();
-    wireStatementControls();
+    buildStmtFilter();
+    wirePeriodBtns();
+    wireMonthSelect();
 
     await dataManager.fetchAll();
-    refresh();
+    renderAll();
   });
 
-  function refresh() {
+  function renderAll() {
     renderOverview();
-    renderAccounts();
+    renderAccountCards();
+    populateMonthDropdown();
     renderFooter();
-    populateStmtDropdowns();
   }
 
   // ===== NAV =====
@@ -54,7 +58,7 @@
       dm.displayCurrency = dm.displayCurrency === 'AUD' ? 'GBP' : 'AUD';
       btn.textContent = dm.displayCurrency === 'AUD' ? '$ AUD' : '£ GBP';
       btn.classList.toggle('gbp', dm.displayCurrency === 'GBP');
-      refresh();
+      renderAll();
       if (currentTab === 'statements') renderStatement();
     });
   }
@@ -65,7 +69,7 @@
     btn.addEventListener('click', async () => {
       btn.querySelector('svg').style.animation = 'spin .8s linear infinite';
       await dataManager.fetchAll();
-      refresh();
+      renderAll();
       if (currentTab === 'statements') renderStatement();
       btn.querySelector('svg').style.animation = 'none';
     });
@@ -75,14 +79,13 @@
     document.getElementById('viewAllBtn')?.addEventListener('click', () => go('statements'));
   }
 
-  // ===== FILTER DROPDOWN =====
-  function buildFilterDropdown() {
-    const list = document.getElementById('acctFilterList');
-    const btn = document.getElementById('acctFilterBtn');
-    const panel = document.getElementById('acctFilterPanel');
+  // ===== STATEMENT ACCOUNT FILTER =====
+  function buildStmtFilter() {
+    const list = document.getElementById('stmtFilterList');
+    const btn = document.getElementById('stmtFilterBtn');
+    const panel = document.getElementById('stmtFilterPanel');
     const backdrop = document.getElementById('backdrop');
 
-    // Build items
     list.innerHTML = CONFIG.ACCOUNTS.map(a =>
       `<label class="filter-item">
         <input type="checkbox" value="${a.name}" checked>
@@ -94,50 +97,101 @@
       </label>`
     ).join('');
 
-    // Toggle
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      filterOpen = !filterOpen;
-      panel.classList.toggle('open', filterOpen);
-      btn.classList.toggle('open', filterOpen);
-      backdrop.classList.toggle('open', filterOpen);
+      stmtFilterOpen = !stmtFilterOpen;
+      panel.classList.toggle('open', stmtFilterOpen);
+      btn.classList.toggle('open', stmtFilterOpen);
+      backdrop.classList.toggle('open', stmtFilterOpen);
     });
 
-    // Backdrop close
-    backdrop.addEventListener('click', closeFilter);
+    backdrop.addEventListener('click', closeStmtFilter);
 
-    // Checkbox change
-    list.addEventListener('change', syncFilter);
+    list.addEventListener('change', syncStmtFilter);
 
-    // Buttons
-    document.getElementById('acctSelectAll').addEventListener('click', () => {
+    document.getElementById('stmtSelectAll').addEventListener('click', () => {
       list.querySelectorAll('input').forEach(c => c.checked = true);
-      syncFilter();
+      syncStmtFilter();
     });
-    document.getElementById('acctSelectNone').addEventListener('click', () => {
+    document.getElementById('stmtSelectNone').addEventListener('click', () => {
       list.querySelectorAll('input').forEach(c => c.checked = false);
-      syncFilter();
+      syncStmtFilter();
     });
-    document.getElementById('acctDone').addEventListener('click', closeFilter);
+    document.getElementById('stmtDone').addEventListener('click', () => {
+      closeStmtFilter();
+      renderStatement();
+    });
   }
 
-  function closeFilter() {
-    filterOpen = false;
-    document.getElementById('acctFilterPanel').classList.remove('open');
-    document.getElementById('acctFilterBtn').classList.remove('open');
+  function closeStmtFilter() {
+    stmtFilterOpen = false;
+    document.getElementById('stmtFilterPanel').classList.remove('open');
+    document.getElementById('stmtFilterBtn').classList.remove('open');
     document.getElementById('backdrop').classList.remove('open');
   }
 
-  function syncFilter() {
-    const checks = document.querySelectorAll('#acctFilterList input:checked');
-    selected = [...checks].map(c => c.value);
-    const n = selected.length, t = CONFIG.ACCOUNTS.length;
-    document.getElementById('acctFilterLabel').textContent =
-      n === t ? `🏦 All Accounts (${t})` :
+  function syncStmtFilter() {
+    const checks = document.querySelectorAll('#stmtFilterList input:checked');
+    stmtAccounts = [...checks].map(c => c.value);
+    const n = stmtAccounts.length, t = CONFIG.ACCOUNTS.length;
+    document.getElementById('stmtFilterLabel').textContent =
+      n === t ? '🏦 All Accounts' :
       n === 0 ? '🏦 No Accounts' :
       `🏦 ${n} Account${n > 1 ? 's' : ''}`;
-    renderAccounts();
-    renderOverview();
+  }
+
+  // ===== PERIOD BUTTONS =====
+  function wirePeriodBtns() {
+    document.querySelectorAll('.period-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Clear active from all period btns and month select
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('stmtMonth').value = '';
+        document.getElementById('stmtMonth').classList.remove('active');
+
+        stmtDays = parseInt(btn.dataset.days);
+        stmtMonth = '';
+        renderStatement();
+      });
+    });
+  }
+
+  function wireMonthSelect() {
+    document.getElementById('stmtMonth').addEventListener('change', e => {
+      const val = e.target.value;
+      if (val) {
+        // Clear period btn active states
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        stmtMonth = val;
+        stmtDays = 0;
+      } else {
+        // Back to default 7 days
+        e.target.classList.remove('active');
+        document.querySelector('.period-btn[data-days="7"]').classList.add('active');
+        stmtMonth = '';
+        stmtDays = 7;
+      }
+      renderStatement();
+    });
+  }
+
+  function populateMonthDropdown() {
+    const ledger = dataManager.getLedger();
+    const months = new Set();
+    ledger.forEach(e => {
+      if (e.date) months.add(e.date.getFullYear() + '-' + String(e.date.getMonth() + 1).padStart(2, '0'));
+    });
+    const sel = document.getElementById('stmtMonth');
+    while (sel.options.length > 1) sel.remove(1);
+    [...months].sort().reverse().forEach(m => {
+      const o = document.createElement('option');
+      o.value = m;
+      const [y, mo] = m.split('-');
+      o.textContent = new Date(y, mo - 1).toLocaleString('en-AU', { month: 'short', year: 'numeric' });
+      sel.appendChild(o);
+    });
   }
 
   // ===== OVERVIEW =====
@@ -171,31 +225,24 @@
     document.getElementById('jointFood').textContent = bal('Joint (Starling)');
     document.getElementById('jointCredit').textContent = bal('Credit Card (Capital One)');
 
-    // Transactions
-    const filtered = ledger.filter(t => selected.includes(t.account));
+    // Recent (last 7 days, all accounts)
     const el = document.getElementById('recentTransactions');
-    el.innerHTML = filtered.length
-      ? filtered.slice(0, 25).map(t => txn(t)).join('')
+    el.innerHTML = ledger.length
+      ? ledger.slice(0, 20).map(t => txn(t)).join('')
       : '<div class="empty-state">No transactions in the last 7 days</div>';
   }
 
   // ===== ACCOUNTS =====
-  function renderAccounts() {
+  function renderAccountCards() {
     const dm = dataManager;
     const accts = dm.getAccounts();
-
-    // Selected balance
-    const selBal = accts.filter(a => selected.includes(a.name)).reduce((s, a) => s + a.balance, 0);
-    document.getElementById('selectedBalance').textContent = dm.formatCurrency(selBal);
-
-    // Cards
     const grid = document.getElementById('accountCards');
+
     grid.innerHTML = accts.map(a => {
       const cfg = CONFIG.ACCOUNTS.find(c => c.name === a.name) || {};
-      const dim = selected.includes(a.name) ? '' : ' dim';
       const native = a.nativeCurrency !== dm.displayCurrency
         ? `<div class="ac-native">${dm.formatCurrency(a.nativeBalance, a.nativeCurrency)} ${a.nativeCurrency}</div>` : '';
-      return `<div class="acct-card${dim}">
+      return `<div class="acct-card">
         <div class="ac-icon">${cfg.icon || '💰'}</div>
         <div class="ac-name">${a.name.replace(/ \(.*\)/, '')}</div>
         <div class="ac-sub">${a.purpose} · ${a.nativeCurrency}</div>
@@ -207,81 +254,70 @@
   }
 
   // ===== STATEMENTS =====
-  function wireStatementControls() {
-    document.getElementById('stmtAccount')?.addEventListener('change', renderStatement);
-    document.getElementById('stmtMonth')?.addEventListener('change', renderStatement);
-  }
-
-  function populateStmtDropdowns() {
-    // Account select
-    const sel = document.getElementById('stmtAccount');
-    if (sel.options.length <= 1) {
-      CONFIG.ACCOUNTS.forEach(a => {
-        const o = document.createElement('option');
-        o.value = a.name;
-        o.textContent = `${a.icon} ${a.name} (${a.currency})`;
-        sel.appendChild(o);
-      });
-    }
-    // Months
-    const ledger = dataManager.getLedger();
-    const months = new Set();
-    ledger.forEach(e => {
-      if (e.date) months.add(e.date.getFullYear() + '-' + String(e.date.getMonth() + 1).padStart(2, '0'));
-    });
-    const mSel = document.getElementById('stmtMonth');
-    while (mSel.options.length > 1) mSel.remove(1);
-    [...months].sort().reverse().forEach(m => {
-      const o = document.createElement('option');
-      o.value = m;
-      const [y, mo] = m.split('-');
-      o.textContent = new Date(y, mo - 1).toLocaleString('en-AU', { month: 'long', year: 'numeric' });
-      mSel.appendChild(o);
-    });
-  }
-
   async function renderStatement() {
-    const account = document.getElementById('stmtAccount').value;
-    const month = document.getElementById('stmtMonth').value;
     const el = document.getElementById('stmtList');
-    const balBar = document.getElementById('stmtBalanceBar');
-
+    const summaryEl = document.getElementById('stmtSummary');
     el.innerHTML = '<div class="empty-state">Loading…</div>';
 
     let data;
-    if (month) {
-      const accts = account === 'all' ? null : [account];
-      const raw = await dataManager.fetchLedger(month, accts);
-      data = raw.map(e => {
-        const cur = e['Currency'] || dataManager.getAccountCurrency(e['Account']);
-        return {
-          date: e['Date'] ? new Date(e['Date']) : null,
-          description: e['Description'] || '',
-          amount: parseFloat(e['Amount']) || 0,
-          balanceAfter: parseFloat(e['Balance After']) || 0,
-          category: e['Category'] || '',
-          account: e['Account'] || '',
-          currency: cur,
-          convertedAmount: dataManager.convert(parseFloat(e['Amount']) || 0, cur),
-          convertedBalance: dataManager.convert(parseFloat(e['Balance After']) || 0, cur)
-        };
-      }).sort((a, b) => (b.date || 0) - (a.date || 0));
+
+    if (stmtMonth) {
+      // Fetch specific month from API
+      const raw = await dataManager.fetchLedger(stmtMonth, stmtAccounts.length < 8 ? stmtAccounts : null);
+      data = raw.map(e => transformLedgerRow(e))
+        .filter(t => stmtAccounts.includes(t.account))
+        .sort((a, b) => (b.date || 0) - (a.date || 0));
     } else {
-      data = dataManager.getLedger();
-      if (account !== 'all') data = data.filter(e => e.account === account);
+      // Use cached ledger filtered by days
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - stmtDays);
+      cutoff.setHours(0, 0, 0, 0);
+
+      // For 30/90 days we need to fetch more data
+      if (stmtDays > 7) {
+        const raw = await dataManager.fetchLedger(null, stmtAccounts.length < 8 ? stmtAccounts : null);
+        data = raw.map(e => transformLedgerRow(e))
+          .filter(t => {
+            if (!t.date) return false;
+            return t.date >= cutoff && stmtAccounts.includes(t.account);
+          })
+          .sort((a, b) => (b.date || 0) - (a.date || 0));
+      } else {
+        data = dataManager.getLedger()
+          .filter(t => stmtAccounts.includes(t.account));
+      }
     }
 
-    // Balance bar
-    if (account !== 'all') {
-      const a = dataManager.getAccounts().find(x => x.name === account);
-      balBar.innerHTML = a ? `<div class="stmt-bal-box">Current: <strong>${dataManager.formatCurrency(a.balance)}</strong></div>` : '';
-    } else { balBar.innerHTML = ''; }
+    // Summary
+    const totalIn = data.filter(t => t.amount > 0).reduce((s, t) => s + t.convertedAmount, 0);
+    const totalOut = Math.abs(data.filter(t => t.amount < 0).reduce((s, t) => s + t.convertedAmount, 0));
+    summaryEl.innerHTML = `
+      <div class="ss-item">In: <span class="ss-val pos">${dataManager.formatCurrency(totalIn)}</span></div>
+      <div class="ss-item">Out: <span class="ss-val neg">${dataManager.formatCurrency(totalOut)}</span></div>
+      <div class="ss-item">${data.length} transactions</div>
+    `;
 
+    // List
     el.innerHTML = data.length
       ? data.map(t => txn(t, true)).join('')
       : '<div class="empty-state">No transactions found</div>';
 
     renderChart(data);
+  }
+
+  function transformLedgerRow(e) {
+    const cur = e['Currency'] || dataManager.getAccountCurrency(e['Account']);
+    return {
+      date: e['Date'] ? new Date(e['Date']) : null,
+      description: e['Description'] || '',
+      amount: parseFloat(e['Amount']) || 0,
+      balanceAfter: parseFloat(e['Balance After']) || 0,
+      category: e['Category'] || '',
+      account: e['Account'] || '',
+      currency: cur,
+      convertedAmount: dataManager.convert(parseFloat(e['Amount']) || 0, cur),
+      convertedBalance: dataManager.convert(parseFloat(e['Balance After']) || 0, cur)
+    };
   }
 
   function renderChart(data) {
